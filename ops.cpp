@@ -1,4 +1,5 @@
 #include "x86.h"
+#include "IOBus.h"
 #include <cstdio>
 
 void IvyBridge::MakeOpcodeTables()
@@ -11,16 +12,22 @@ void IvyBridge::MakeOpcodeTables()
     lookup16[0x7C] = std::bind(&IvyBridge::JlRel8, this);
     lookup16[0x80] = std::bind(&IvyBridge::Code80, this);
     lookup16[0x81] = std::bind(&IvyBridge::Code81_16, this);
+    lookup16[0x84] = std::bind(&IvyBridge::TestRm8R8, this);
     lookup16[0x8A] = std::bind(&IvyBridge::MovR8Rm8, this);
     lookup16[0x8B] = std::bind(&IvyBridge::MovR16Rm16, this);
     lookup16[0x8E] = std::bind(&IvyBridge::MovSregRm16, this);
+    lookup16[0x90] = std::bind(&IvyBridge::Nop, this);
     lookup16[0xA8] = std::bind(&IvyBridge::TestAlImm8, this);
     for (int i = 0; i < 8; i++)
         lookup16[0xB8 + i] = std::bind(&IvyBridge::MovR16Imm16, this);
+    lookup16[0xC1] = std::bind(&IvyBridge::CodeC1_16, this);
     lookup16[0xC6] = std::bind(&IvyBridge::MovRm8Imm8, this);
+    lookup16[0xC7] = std::bind(&IvyBridge::MovRm16Imm16, this);
     lookup16[0xE9] = std::bind(&IvyBridge::JmpRel16, this);
     lookup16[0xEB] = std::bind(&IvyBridge::JmpRel8, this);
+    lookup16[0xED] = std::bind(&IvyBridge::InAxDx, this);
     lookup16[0xF6] = std::bind(&IvyBridge::TestRm8Imm8, this);
+    lookup16[0xFC] = std::bind(&IvyBridge::Cld, this);
     lookup16[0xFA] = std::bind(&IvyBridge::Cli, this);
 
     lookup32[0x01] = std::bind(&IvyBridge::AddRm32R32, this);
@@ -48,43 +55,65 @@ void IvyBridge::MakeOpcodeTables()
     lookup32[0x80] = std::bind(&IvyBridge::Code80, this);
     lookup32[0x81] = std::bind(&IvyBridge::Code81_32, this);
     lookup32[0x83] = std::bind(&IvyBridge::Code83_32, this);
+    lookup32[0x84] = std::bind(&IvyBridge::TestRm8R8, this);
     lookup32[0x85] = std::bind(&IvyBridge::TestRm32R32, this);
+    lookup32[0x88] = std::bind(&IvyBridge::MovRm8R8, this);
     lookup32[0x89] = std::bind(&IvyBridge::MovRm32R32, this);
     lookup32[0x8A] = std::bind(&IvyBridge::MovR8Rm8, this);
     lookup32[0x8B] = std::bind(&IvyBridge::MovR32Rm32, this);
     lookup32[0x8E] = std::bind(&IvyBridge::MovSregRm16, this);
+    lookup32[0x90] = std::bind(&IvyBridge::Nop, this);
+    lookup32[0x9C] = std::bind(&IvyBridge::Pushfq, this);
     lookup32[0xA8] = std::bind(&IvyBridge::TestAlImm8, this);
     for (int i = 0; i < 8; i++)
         lookup32[0xB8 + i] = std::bind(&IvyBridge::MovR32Imm32, this);
     lookup32[0xC6] = std::bind(&IvyBridge::MovRm8Imm8, this);
     lookup32[0xC1] = std::bind(&IvyBridge::CodeC1_32, this);
+    lookup32[0xC3] = std::bind(&IvyBridge::Ret, this);
     lookup32[0xC7] = std::bind(&IvyBridge::MovRm32Imm32, this);
     lookup32[0xE2] = std::bind(&IvyBridge::LoopEcxRel8, this);
+    lookup32[0xE8] = std::bind(&IvyBridge::CallRel32, this);
     lookup32[0xE9] = std::bind(&IvyBridge::JmpRel32, this);
     lookup32[0xEA] = std::bind(&IvyBridge::JmpPtr1632, this);
     lookup32[0xEB] = std::bind(&IvyBridge::JmpRel8, this);
+    lookup32[0xED] = std::bind(&IvyBridge::InEaxDx, this);
+    lookup32[0xEF] = std::bind(&IvyBridge::OutEaxDx, this);
     lookup32[0xF6] = std::bind(&IvyBridge::TestRm8Imm8, this);
     lookup32[0xFA] = std::bind(&IvyBridge::Cli, this);
+    lookup32[0xFC] = std::bind(&IvyBridge::Cld, this);
     lookup32[0xFF] = std::bind(&IvyBridge::CodeFF_32, this);
     
     lookup64[0x21] = std::bind(&IvyBridge::AndRm64R64, this);
     lookup64[0x24] = std::bind(&IvyBridge::AndAlImm8, this);
+    lookup64[0x39] = std::bind(&IvyBridge::CmpRm64R64, this);
+    lookup64[0x3D] = std::bind(&IvyBridge::CmpRaxImm32, this);
     lookup64[0x72] = std::bind(&IvyBridge::JcRel8, this);
     lookup64[0x73] = std::bind(&IvyBridge::JncRel8, this);
     lookup64[0x74] = std::bind(&IvyBridge::JzRel8, this);
     lookup64[0x75] = std::bind(&IvyBridge::JnzRel8, this);
     lookup64[0x7C] = std::bind(&IvyBridge::JlRel8, this);
     lookup64[0x80] = std::bind(&IvyBridge::Code80, this);
+    lookup64[0x81] = std::bind(&IvyBridge::Code81_64, this);
+    lookup64[0x83] = std::bind(&IvyBridge::Code83_64, this);
+    lookup64[0x84] = std::bind(&IvyBridge::TestRm8R8, this);
     lookup64[0x89] = std::bind(&IvyBridge::MovRm64R64, this);
     lookup64[0x8A] = std::bind(&IvyBridge::MovR8Rm8, this);
+    lookup64[0x8D] = std::bind(&IvyBridge::LeaR64M, this);
     lookup64[0x8E] = std::bind(&IvyBridge::MovSregRm16, this);
+    lookup64[0x90] = std::bind(&IvyBridge::Nop, this);
+    lookup64[0x9C] = std::bind(&IvyBridge::Pushfq, this);
     lookup64[0xA8] = std::bind(&IvyBridge::TestAlImm8, this);
+    lookup64[0xAB] = std::bind(&IvyBridge::Stosq, this);
     for (int i = 0; i < 8; i++)
         lookup64[0xB8 + i] = std::bind(&IvyBridge::MovR64Imm64, this);
     lookup64[0xC6] = std::bind(&IvyBridge::MovRm8Imm8, this);
+    lookup64[0xC7] = std::bind(&IvyBridge::MovRm64Imm32, this);
+    lookup64[0xE8] = std::bind(&IvyBridge::CallRel32, this);
+    lookup64[0xE9] = std::bind(&IvyBridge::JmpRel32, this);
     lookup64[0xEB] = std::bind(&IvyBridge::JmpRel8, this);
     lookup64[0xF6] = std::bind(&IvyBridge::TestRm8Imm8, this);
     lookup64[0xFA] = std::bind(&IvyBridge::Cli, this);
+    lookup64[0xFC] = std::bind(&IvyBridge::Cld, this);
     lookup64[0xFF] = std::bind(&IvyBridge::CodeFF_64, this);
 
     extLookup16[0x01] = std::bind(&IvyBridge::Code0f01, this);
@@ -103,6 +132,9 @@ void IvyBridge::MakeOpcodeTables()
     extLookup32[0xBA] = std::bind(&IvyBridge::Code0FBA_32, this);
     
     extLookup64[0x01] = std::bind(&IvyBridge::Code0f01, this);
+    extLookup64[0x1E] = std::bind(&IvyBridge::HintNop, this);
+    extLookup64[0x84] = std::bind(&IvyBridge::JzRel32, this);
+    extLookup64[0x85] = std::bind(&IvyBridge::JnzRel32, this);
     extLookup64[0x20] = std::bind(&IvyBridge::MovR64CRn, this);
     extLookup64[0x22] = std::bind(&IvyBridge::MovCRnR64, this);
 }
@@ -182,6 +214,19 @@ void IvyBridge::UpdateFlagsSub32(uint32_t value1, uint32_t value2, uint64_t resu
     rflags.flag_bits.pf = CalcPF(result & 0xff);
 }
 
+void IvyBridge::UpdateFlagsSub64(uint64_t value1, uint64_t value2, uint64_t result)
+{
+    bool sign1 = value1 >> 31;
+    bool sign2 = value2 >> 31;
+    bool signr = (result >> 31) & 1;
+
+    rflags.flag_bits.cf = value2 > value1;
+    rflags.flag_bits.zf = (result == 0);
+    rflags.flag_bits.sf = signr;
+    rflags.flag_bits.of = (sign1 != sign2 && sign1 != signr);
+    rflags.flag_bits.pf = CalcPF(result & 0xff);
+}
+
 void IvyBridge::UpdateFlagsAdd32(uint32_t value1, uint32_t value2, uint64_t result)
 {
     bool sign1 = value1 >> 31;
@@ -190,6 +235,19 @@ void IvyBridge::UpdateFlagsAdd32(uint32_t value1, uint32_t value2, uint64_t resu
 
     rflags.flag_bits.cf = (result >> 32);
     rflags.flag_bits.zf = ((result & 0xFFFFFFFF) == 0);
+    rflags.flag_bits.sf = signr;
+    rflags.flag_bits.of = (sign1 == sign2 && sign1 != signr);
+    rflags.flag_bits.pf = CalcPF(result & 0xff);
+}
+
+void IvyBridge::UpdateFlagsAdd64(uint64_t value1, uint64_t value2, uint64_t result)
+{
+    bool sign1 = value1 >> 63;
+    bool sign2 = value2 >> 63;
+    bool signr = (result >> 63) & 1;
+
+    rflags.flag_bits.cf = result < value1;
+    rflags.flag_bits.zf = (result == 0);
     rflags.flag_bits.sf = signr;
     rflags.flag_bits.of = (sign1 == sign2 && sign1 != signr);
     rflags.flag_bits.pf = CalcPF(result & 0xff);
@@ -290,6 +348,35 @@ void IvyBridge::CmpRm8Imm8()
         printf("cmp %s, 0x%02x\n", disasm.c_str(), imm8);
 }
 
+void IvyBridge::TestRm8R8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint8_t rm8 = ReadModrm8(disasm);
+    uint8_t r8 = ReadReg8((Registers)modrm.reg);
+
+    uint8_t result = r8 & rm8;
+
+    UpdateFlagsLogic8(result);
+
+    if (canDisassemble)
+        printf("test %s, %s\n", disasm.c_str(), Reg8[modrm.reg]);
+}
+
+void IvyBridge::MovRm8R8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint8_t r8 = ReadReg8((Registers)modrm.reg);
+
+    WriteModrm8(disasm, r8);
+
+    if (canDisassemble)
+        printf("mov %s, %s\n", disasm.c_str(), Reg8[modrm.reg]);
+}
+
 void IvyBridge::MovR8Rm8()
 {
     FetchModrm();
@@ -314,6 +401,12 @@ void IvyBridge::MovSregRm16()
 
     if (canDisassemble)
         printf("mov %s, %s\n", Segs[modrm.reg], disasm.c_str());
+}
+
+void IvyBridge::Nop()
+{
+    if (canDisassemble)
+        printf("nop\n");
 }
 
 void IvyBridge::TestAlImm8()
@@ -365,6 +458,13 @@ void IvyBridge::TestRm8Imm8()
 
     if (canDisassemble)
         printf("test %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+void IvyBridge::Cld()
+{
+    rflags.flag_bits.df = 0;
+    if (canDisassemble)
+        printf("cld\n");
 }
 
 void IvyBridge::Cli()
@@ -425,6 +525,55 @@ void IvyBridge::MovR16Imm16()
         printf("mov %s, 0x%04x\n", Reg16[reg], imm16);
 }
 
+void IvyBridge::CodeC1_16()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x05:
+        ShrRm16Imm8();
+        break;
+    default:
+        printf("Unknown opcode 0xC1 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void IvyBridge::ShrRm16Imm8()
+{
+    std::string disasm;
+    uint16_t rm16 = ReadModrm16(disasm);
+    uint8_t imm8 = ReadImm8(true) & 0x1F;
+
+    uint32_t result = rm16 >> imm8;
+    WriteModrm16(disasm, result);
+
+    rflags.flag_bits.cf = ((rm16 << (imm8-1)) & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 15) & 1;
+
+    if (imm8 == 1)
+        rflags.flag_bits.of = ((rm16 >> 15) & 1) ^ ((rm16 >> 14) & 1);
+    
+    if (canDisassemble)
+        printf("shr %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+void IvyBridge::MovRm16Imm16()
+{
+    FetchModrm();
+
+    uint16_t imm16 = ReadImm16(true);
+
+    std::string disasm;
+    WriteModrm16(disasm, imm16);
+
+    if (canDisassemble)
+        printf("mov %s, 0x%04x\n", disasm.c_str(), imm16);
+}
+
 void IvyBridge::JmpRel16()
 {
     int16_t rel16 = ReadImm16(true);
@@ -432,6 +581,14 @@ void IvyBridge::JmpRel16()
     rip += (int64_t)rel16;
 
     printf("jmp 0x%08lx\n", TranslateAddr(CS, rip));
+}
+
+void IvyBridge::InAxDx()
+{
+    regs[RAX].reg16 = IOBus::In16(regs[RDX].reg16);
+
+    if (canDisassemble)
+        printf("in ax, dx\n");
 }
 
 void IvyBridge::AddRm32R32()
@@ -594,21 +751,43 @@ void IvyBridge::DecR32()
 void IvyBridge::PushR32()
 {
     uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0x50;
+    if (rex.b) reg += 8;
 
-    Push32(regs[reg].reg32);
+    if (mode != Mode::LongMode)
+    {
+        Push32(regs[reg].reg32);
 
-    if (canDisassemble)
-        printf("push %s\n", Reg32[reg]);
+        if (canDisassemble)
+            printf("push %s\n", Reg32[reg]);
+    }
+    else
+    {
+        Push64(regs[reg].reg64);
+
+        if (canDisassemble)
+            printf("push %s\n", Reg64[reg]);
+    }
 }
 
 void IvyBridge::PopR32()
 {
     uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0x58;
+    if (rex.b) reg += 8;
+    
+    if (mode == Mode::LongMode)
+    {
+        regs[reg].reg64 = Pop64();
 
-    regs[reg].reg32 = Pop32();
+        if (canDisassemble)
+            printf("pop %s\n", Reg64[reg]);
+    }
+    else
+    {
+        regs[reg].reg32 = Pop32();
 
-    if (canDisassemble)
-        printf("pop %s\n", Reg32[reg]);
+        if (canDisassemble)
+            printf("pop %s\n", Reg32[reg]);
+    }
 }
 
 void IvyBridge::Code81_32()
@@ -668,6 +847,9 @@ void IvyBridge::Code83_32()
     case 0x00:
         AddRm32Imm8();
         break;
+    case 0x04:
+        AndRm32Imm8();
+        break;
     case 0x07:
         CmpRm32Imm8();
         break;
@@ -693,11 +875,27 @@ void IvyBridge::AddRm32Imm8()
         printf("add %s, 0x%02x\n", disasm.c_str(), imm32);
 }
 
+void IvyBridge::AndRm32Imm8()
+{
+    std::string disasm;
+    uint32_t imm32 = (uint32_t)ReadImm8(true);
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint32_t result = rm32 & imm32;
+
+    UpdateFlagsLogic32(result);
+
+    WriteModrm32(disasm, result);
+
+    if (canDisassemble)
+        printf("and %s, 0x%02x\n", disasm.c_str(), imm32);
+}
+
 void IvyBridge::CmpRm32Imm8()
 {
     std::string disasm;
-    uint32_t rm32 = ReadModrm32(disasm);
     uint32_t imm32 = (uint32_t)ReadImm8(true);
+    uint32_t rm32 = ReadModrm32(disasm);
 
     uint64_t result = (uint64_t)rm32 - (uint64_t)imm32;
 
@@ -764,9 +962,11 @@ void IvyBridge::BtRm32R32()
 void IvyBridge::MovR32Imm32()
 {
     uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0xB8;
+    if (rex.b) reg += 8;
+
     uint32_t imm32 = ReadImm32(true);
 
-    regs[reg].reg32 = imm32;
+    regs[reg].reg64 = imm32;
 
     if (canDisassemble)
         printf("mov %s, 0x%08x\n", Reg32[reg], imm32);
@@ -808,6 +1008,14 @@ void IvyBridge::ShlRm32Imm8()
         printf("shl %s, 0x%02x\n", disasm.c_str(), imm8);
 }
 
+void IvyBridge::Ret()
+{
+    rip = (mode == Mode::LongMode) ? Pop64() : Pop32();
+
+    if (canDisassemble)
+        printf("ret (0x%08lx)\n", TranslateAddr(CS, rip));
+}
+
 void IvyBridge::MovRm32Imm32()
 {
     FetchModrm();
@@ -833,6 +1041,18 @@ void IvyBridge::LoopEcxRel8()
         rip += (int64_t)rel8;
 }
 
+void IvyBridge::CallRel32()
+{
+    int32_t rel32 = ReadImm32(true);
+
+    (mode == Mode::LongMode) ? Push64(rip) : Push32(rip);
+
+    rip += (int64_t)rel32;
+
+    if (canDisassemble)
+        printf("call 0x%08lx\n", TranslateAddr(CS, rip));
+}
+
 void IvyBridge::JmpRel32()
 {
     int32_t rel32 = ReadImm32(true);
@@ -855,6 +1075,22 @@ void IvyBridge::JmpPtr1632()
 
     if (canDisassemble)
         printf("jmp 0x%02x:0x%08x\n", selector, newRip);
+}
+
+void IvyBridge::InEaxDx()
+{
+    regs[RAX].reg32 = IOBus::In32(regs[RDX].reg16);
+
+    if (canDisassemble)
+        printf("in eax, dx\n");
+}
+
+void IvyBridge::OutEaxDx()
+{
+    IOBus::Out32(regs[RDX].reg16, regs[RAX].reg32);
+
+    if (canDisassemble)
+        printf("out dx, eax\n");
 }
 
 void IvyBridge::CodeFF_32()
@@ -901,6 +1137,127 @@ void IvyBridge::AndRm64R64()
         printf("and %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
 }
 
+void IvyBridge::CmpRm64R64()
+{
+    FetchModrm();
+
+    std::string disasm;
+
+    uint64_t r64 = regs[modrm.reg].reg64;
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    UpdateFlagsSub64(rm64, r64, rm64 - r64);
+
+    if (canDisassemble)
+        printf("cmp %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
+}
+
+void IvyBridge::CmpRaxImm32()
+{
+    uint32_t imm32 = ReadImm32(true);
+
+    uint64_t result = regs[RAX].reg64 - imm32;
+
+    UpdateFlagsSub64(regs[RAX].reg64, imm32, result);
+
+    if (canDisassemble)
+        printf("cmp rax, 0x%08x\n", imm32);
+}
+
+void IvyBridge::Code81_64()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x05:
+        SubRm64Imm32();
+        break;
+    default:
+        printf("Unknown 64-bit opcode 0x81 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void IvyBridge::SubRm64Imm32()
+{
+    std::string disasm;
+    uint32_t imm32 = ReadImm32(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    uint64_t result = rm64 - (uint64_t)imm32;
+    UpdateFlagsSub64(rm64, (uint64_t)imm32, result);
+
+    WriteModrm64(disasm, result);
+
+    if (canDisassemble)
+        printf("sub %s, 0x%08x\n", disasm.c_str(), imm32);
+}
+
+void IvyBridge::Code83_64()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x00:
+        AddRm64Imm8();
+        break;
+    case 0x05:
+        SubRm64Imm8();
+        break;
+    case 0x07:
+        CmpRm64Imm8();
+        break;
+    default:
+        printf("Unknown 64-bit opcode 0x83 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void IvyBridge::AddRm64Imm8()
+{
+    std::string disasm;
+    uint8_t imm8 = ReadImm8(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    uint64_t result = rm64 + (uint64_t)imm8;
+    UpdateFlagsAdd64(rm64, (uint64_t)imm8, result);
+
+    WriteModrm64(disasm, result);
+
+    if (canDisassemble)
+        printf("add %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+void IvyBridge::SubRm64Imm8()
+{
+    std::string disasm;
+    uint8_t imm8 = ReadImm8(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    uint64_t result = rm64 - (uint64_t)imm8;
+    UpdateFlagsSub64(rm64, (uint64_t)imm8, result);
+
+    WriteModrm64(disasm, result);
+
+    if (canDisassemble)
+        printf("sub %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+void IvyBridge::CmpRm64Imm8()
+{
+    std::string disasm;
+    uint8_t imm8 = ReadImm8(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    uint64_t result = rm64 - (uint64_t)imm8;
+    UpdateFlagsSub64(rm64, (uint64_t)imm8, result);
+
+    if (canDisassemble)
+        printf("cmp %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
 void IvyBridge::MovRm64R64()
 {
     FetchModrm();
@@ -914,6 +1271,45 @@ void IvyBridge::MovRm64R64()
         printf("mov %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
 }
 
+void IvyBridge::LeaR64M()
+{
+    FetchModrm();
+
+    std::string disasm;
+    regs[modrm.reg].reg64 = DecodeModrmAddr(disasm);
+
+    if (canDisassemble)
+        printf("lea %s, %s\n", Reg64[modrm.reg], disasm.c_str());
+}
+
+void IvyBridge::Pushfq()
+{
+    if (mode == Mode::LongMode)
+        Push64(rflags.value);
+    else
+        Push32(rflags.value);
+
+    if (canDisassemble)
+        printf("pushf\n");
+}
+
+void IvyBridge::Stosq()
+{
+start:
+    l1->Write64(TranslateAddr(DS, regs[RDI].reg64), regs[RAX].reg64);
+    regs[RDI].reg64 += 8;
+
+    if (rep)
+    {
+        regs[RCX].reg64--;
+        if (regs[RCX].reg64)
+            goto start;
+    }
+
+    if (canDisassemble)
+        printf("stosq\n");
+}
+
 void IvyBridge::MovR64Imm64()
 {
     uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0xB8;
@@ -925,16 +1321,46 @@ void IvyBridge::MovR64Imm64()
         printf("mov %s, 0x%08lx\n", Reg64[reg], imm64);
 }
 
+void IvyBridge::MovRm64Imm32()
+{
+    FetchModrm64();
+
+    uint64_t imm32 = (int64_t)(int32_t)ReadImm32(true);
+
+    std::string disasm;
+    WriteModrm64(disasm, imm32);
+
+    if (canDisassemble)
+        printf("mov %s, 0x%08lx\n", disasm.c_str(), imm32);
+}
+
 void IvyBridge::CodeFF_64()
 {
     FetchModrm();
 
     switch (modrm.reg)
     {
+    case 0x00:
+        IncRm64();
+        break;
     default:
-        printf("Unknown opcode 0xFF 0x%02X\n", modrm.reg);
+        printf("Unknown 64-bit opcode 0xFF 0x%02X\n", modrm.reg);
         exit(1);
     }
+}
+
+void IvyBridge::IncRm64()
+{
+    std::string disasm;
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    uint64_t result = rm64 + 1UL;
+    UpdateFlagsAdd64(rm64, 1UL, result);
+
+    WriteModrm64(disasm, result);
+
+    if (canDisassemble)
+        printf("inc %s\n", disasm.c_str());
 }
 
 void IvyBridge::Code0f01()
@@ -1001,9 +1427,20 @@ void IvyBridge::Lidt()
         printf("lidt %s (0x%08lx, 0x%04x)\n", disasm.c_str(), base, limit);
 }
 
+void IvyBridge::HintNop()
+{
+    FetchModrm();
+
+    if (canDisassemble)
+        printf("nop\n");
+}
+
 void IvyBridge::MovR64CRn()
 {
-    modrm.value = l1->Read8(TranslateAddr(CS, rip++), false);
+    uint8_t val = ReadImm8(true);
+    modrm.mod = (val >> 6) & 0x3;
+    modrm.reg = (val >> 3) & 0x7;
+    modrm.rm = val & 0x7;
 
     regs[modrm.reg].reg64 = cr[modrm.rm];
 
@@ -1013,7 +1450,10 @@ void IvyBridge::MovR64CRn()
 
 void IvyBridge::MovCRnR64()
 {
-    modrm.value = l1->Read8(TranslateAddr(CS, rip++), false);
+    uint8_t val = ReadImm8(true);
+    modrm.mod = (val >> 6) & 0x3;
+    modrm.reg = (val >> 3) & 0x7;
+    modrm.rm = val & 0x7;
 
     cr[modrm.reg] = regs[modrm.rm].reg32;
 
@@ -1064,6 +1504,17 @@ void IvyBridge::Rdmsr()
         printf("rdmsr\n");
 }
 
+void IvyBridge::JnzRel32()
+{
+    int32_t rel32 = ReadImm32(true);
+
+    if (canDisassemble)
+        printf("jnz 0x%08lx\n", TranslateAddr(CS, rip + (int64_t)rel32));
+
+    if (!rflags.flag_bits.zf)
+        rip += (int64_t)rel32;
+}
+
 void IvyBridge::Cpuid()
 {
     uint32_t func = regs[RAX].reg32;
@@ -1089,7 +1540,8 @@ void IvyBridge::JzRel32()
 {
     int32_t rel32 = ReadImm32(true);
 
-    printf("jz 0x%08lx\n", TranslateAddr(CS, rip+(int64_t)rel32));
+    if (canDisassemble)
+        printf("jz 0x%08lx\n", TranslateAddr(CS, rip+(int64_t)rel32));
 
     if (rflags.flag_bits.zf)
         rip += (int64_t)rel32;

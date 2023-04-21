@@ -48,6 +48,18 @@ void Bus::Write8(uint64_t addr, uint8_t data)
     exit(1);
 }
 
+void Bus::Write16(uint64_t addr, uint16_t data)
+{
+    for (uint64_t i = 0; i < devices.size(); i++)
+    {
+        if (devices[i]->GetStart() <= addr && devices[i]->GetEnd() >= addr)
+            return devices[i]->Write16(addr, data);
+    }
+
+    printf("Write16 to unknown addr 0x%lx\n", addr);
+    exit(1);
+}
+
 void Bus::Write32(uint64_t addr, uint32_t data)
 {
     for (uint64_t i = 0; i < devices.size(); i++)

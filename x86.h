@@ -26,6 +26,8 @@ private:
     bool is32 = false, is64 = false;
     bool a32 = false, a64 = false;
 
+    bool rep = false;
+
     Segments prefix = Segments::DS;
 
     uint64_t Read64(Segments seg, uint64_t addr);
@@ -34,7 +36,9 @@ private:
     uint8_t Read8(Segments seg, uint64_t addr);
 
     void Push32(uint32_t val);
+    void Push64(uint64_t val);
 
+    uint64_t Pop64();
     uint32_t Pop32();
 
     uint64_t TranslateAddr(Segments seg, uint64_t addr);
@@ -64,6 +68,7 @@ private:
     uint8_t ReadModrm8(std::string& disasm);
 
     void WriteModrm8(std::string& disasm, uint8_t val);
+    void WriteModrm16(std::string& disasm, uint16_t val);
     void WriteModrm32(std::string& disasm, uint32_t val);
     void WriteModrm64(std::string& disasm, uint64_t val);
 
@@ -78,15 +83,18 @@ private:
     int id = 0;
     bool halted = false;
 
-    union
+    struct
     {
-        uint8_t value;
-        struct
-        {
-            uint8_t rm : 3;
-            uint8_t reg : 3;
-            uint8_t mod : 2;
-        };
+        bool b = false;
+        bool x = false;
+        bool r = false;
+    } rex;
+
+    struct
+    {
+        uint32_t mod;
+        uint32_t rm;
+        uint32_t reg;
     } modrm;
 
     union
@@ -98,7 +106,15 @@ private:
             uint8_t index : 3;
             uint8_t scale : 2;
         };
+    } sib_;
+
+    struct
+    {
+        uint32_t base;
+        uint32_t index;
+        uint32_t scale;
     } sib;
+    
 
     DTR idtr, gdtr;
 
@@ -138,7 +154,9 @@ private:
     void UpdateFlagsSub8(uint8_t value1, uint8_t value2, uint32_t result);
     void UpdateFlagsSub16(uint16_t value1, uint16_t value2, uint32_t result);
     void UpdateFlagsSub32(uint32_t value1, uint32_t value2, uint64_t result);
+    void UpdateFlagsSub64(uint64_t value1, uint64_t value2, uint64_t result);
     void UpdateFlagsAdd32(uint32_t value1, uint32_t value2, uint64_t result);
+    void UpdateFlagsAdd64(uint64_t value1, uint64_t value2, uint64_t result);
 
     // All modes
     void AndAlImm8(); // 0x24
@@ -149,8 +167,11 @@ private:
     void JlRel8(); // 0x7C
     void Code80(); // 0x80
     void CmpRm8Imm8(); // 0x80 0x07
+    void TestRm8R8(); // 0x84
+    void MovRm8R8(); // 0x88
     void MovR8Rm8(); // 0x8A
     void MovSregRm16(); // 0x8E
+    void Nop(); // 0x90
     void TestAlImm8(); // 0xA8
     void MovRm8Imm8(); // 0xC6
     void JmpRel8(); // 0xEB
@@ -163,7 +184,11 @@ private:
     void CmpRm16Imm16(); // 0x81 0x07
     void MovR16Rm16(); // 0x8B
     void MovR16Imm16(); // 0xB8+r
+    void CodeC1_16(); // 0xC1
+    void ShrRm16Imm8(); // 0xC1 0x05
+    void MovRm16Imm16(); // 0xC7
     void JmpRel16(); // 0xE9
+    void InAxDx(); // 0xED
 
     // 32-bit mode
     void AddRm32R32(); // 0x01
@@ -183,6 +208,7 @@ private:
     void CmpRm32Imm32(); // 0x81 0x07
     void Code83_32(); // 0x83
     void AddRm32Imm8(); // 0x83 0x00
+    void AndRm32Imm8(); // 0x83 0x04
     void CmpRm32Imm8(); // 0x83 0x07
     void TestRm32R32(); // 0x85
     void MovRm32R32(); // 0x89
@@ -191,27 +217,46 @@ private:
     void MovR32Imm32(); // 0xB8+r
     void CodeC1_32(); // 0xC1
     void ShlRm32Imm8(); // 0xC1 0x04
+    void Ret(); // 0xC3
     void MovRm32Imm32(); // 0xC7
     void LoopEcxRel8(); // 0xE2
+    void CallRel32(); // 0xE8
     void JmpRel32(); // 0xE9
     void JmpPtr1632(); // 0xEA
+    void InEaxDx(); // 0xED
+    void OutEaxDx(); // 0xEF
     void CodeFF_32(); // 0xFF
     void JmpRm32(); // 0xFF 0x04
 
     // 64-bit mode
     void AndRm64R64(); // 0x21
+    void CmpRm64R64(); // 0x39
+    void CmpRaxImm32(); // 0x3D
+    void Code81_64(); // 0x81
+    void SubRm64Imm32(); // 0x81 0x05
+    void Code83_64(); // 0x83
+    void AddRm64Imm8(); // 0x83 0x00
+    void SubRm64Imm8(); // 0x83 0x05
+    void CmpRm64Imm8(); // 0x83 0x07
     void MovRm64R64(); // 0x89
+    void LeaR64M(); // 0x8D
+    void Pushfq(); // 0x9C
+    void Stosq(); // 0xAB
     void MovR64Imm64(); // 0xB8+r
+    void MovRm64Imm32(); // 0xC7
     void CodeFF_64(); // 0xFF
+    void IncRm64(); // 0xFF 0x00
 
     // All modes, 0x0f
     void Code0f01(); // 0x01
         void Lgdt(); // 0x01 0x02
         void Lidt(); // 0x01 0x03
+    void HintNop(); // 0x1E
     void MovR64CRn(); // 0x20
     void MovCRnR64(); // 0x22
     void Wrmsr(); // 0x30
     void Rdmsr(); // 0x32
+    void JnzRel32(); // 0x85
     void Cpuid(); // 0xA2
 
     // 32-bit, 0x0f

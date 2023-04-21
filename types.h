@@ -7,7 +7,8 @@
 inline std::string convert_int(int n)
 {
    std::stringstream ss;
-   ss << std::hex << n;
+
+   ss << "0x" << std::hex << n;
    return ss.str();
 }
 

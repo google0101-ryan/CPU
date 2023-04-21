@@ -116,74 +116,80 @@ uint8_t Cache::Read8D(uint64_t addr)
 
 void Cache::Write64(uint64_t addr, uint64_t data)
 {
-    uint64_t index = (addr >> 6) & 0x3F;
-    uint64_t tag = (addr >> 12);
+    // uint64_t index = (addr >> 6) & 0x3F;
+    // uint64_t tag = (addr >> 12);
 
-    auto& l = dlines[index];
+    // auto& l = dlines[index];
 
-    for (int i = 0; i < 8; i++)
-    {
-        if (!l.ways[i].valid) continue;
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     if (!l.ways[i].valid) continue;
 
-        if (l.ways[i].tag != tag) continue;
+    //     if (l.ways[i].tag != tag) continue;
         
-        // This way no longer contains valid data
-        l.ways->valid = false;
-        break;
-    }
+    //     // This way no longer contains valid data
+    //     l.ways->valid = false;
+    //     break;
+    // }
 
     Bus::Write64(addr, data);
 }
 
 void Cache::Write32(uint64_t addr, uint32_t data)
 {
-    uint64_t index = (addr >> 6) & 0x3F;
-    uint64_t tag = (addr >> 12);
+    // uint64_t index = (addr >> 6) & 0x3F;
+    // uint64_t tag = (addr >> 12);
 
-    auto& l = dlines[index];
+    // auto& l = dlines[index];
 
-    for (int i = 0; i < 8; i++)
-    {
-        if (!l.ways[i].valid) continue;
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     if (!l.ways[i].valid) continue;
 
-        if (l.ways[i].tag != tag) continue;
+    //     if (l.ways[i].tag != tag) continue;
         
-        // This way no longer contains valid data
-        l.ways->valid = false;
-        break;
-    }
+    //     // This way no longer contains valid data
+    //     l.ways->valid = false;
+    //     break;
+    // }
 
     Bus::Write32(addr, data);
 }
 
+void Cache::Write16(uint64_t addr, uint32_t data)
+{
+    Bus::Write16(addr, data);
+}
+
 void Cache::Write8(uint64_t addr, uint8_t data)
 {
-    uint64_t blockOffs = (addr & 0x3F);
-    uint64_t index = (addr >> 6) & 0x3F;
-    uint64_t tag = (addr >> 12);
+    // uint64_t blockOffs = (addr & 0x3F);
+    // uint64_t index = (addr >> 6) & 0x3F;
+    // uint64_t tag = (addr >> 12);
 
-    auto& l = dlines[index];
+    // auto& l = dlines[index];
 
-    for (int i = 0; i < 8; i++)
-    {
-        if (!l.ways[i].valid) continue;
+    // for (int i = 0; i < 8; i++)
+    // {
+    //     if (!l.ways[i].valid) continue;
 
-        if (l.ways[i].tag != tag) continue;
+    //     if (l.ways[i].tag != tag) continue;
         
-        // This way no longer contains valid data
-        l.ways->valid = false;
-        break;
-    }
+    //     // This way no longer contains valid data
+    //     l.ways->valid = false;
+    //     break;
+    // }
 
     Bus::Write8(addr, data);
 }
 
 uint8_t Cache::Read8(uint64_t addr, bool is_instr)
 {
-    if (is_instr)
-        return Read8I(addr);
-    else
-        return Read8D(addr);
+    // if (is_instr)
+    //     return Read8I(addr);
+    // else
+    //     return Read8D(addr);
+    return Bus::Read8(addr);
 }
 
 uint16_t Cache::Read16(uint64_t addr, bool is_instr)

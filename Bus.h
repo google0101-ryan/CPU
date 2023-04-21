@@ -35,6 +35,7 @@ uint8_t Read8(uint64_t addr);
 uint64_t Read64(uint64_t addr);
 
 void Write8(uint64_t addr, uint8_t data);
+void Write16(uint64_t addr, uint16_t data);
 void Write32(uint64_t addr, uint32_t data);
 void Write64(uint64_t addr, uint64_t data);
 

@@ -47,6 +47,19 @@ void IvyBridge::Push32(uint32_t val)
     l1->Write32(TranslateAddr(SS, regs[RSP].reg64), val);
 }
 
+void IvyBridge::Push64(uint64_t val)
+{
+    regs[RSP].reg64 -= 8;
+    l1->Write64(TranslateAddr(SS, regs[RSP].reg64), val);
+}
+
+uint64_t IvyBridge::Pop64()
+{
+    uint64_t data = l1->Read64(TranslateAddr(SS, regs[RSP].reg64), false);
+    regs[RSP].reg64 += 8;
+    return data;
+}
+
 uint32_t IvyBridge::Pop32()
 {
     uint32_t data = l1->Read32(TranslateAddr(SS, regs[RSP].reg64), false);
@@ -197,8 +210,6 @@ void IvyBridge::CheckModeChange()
 {
     if ((cr[0] & 1) && mode == Mode::RealMode)
         mode = Mode::ProtectedMode;
-    else if ((cr[0] & 1) && (cr[0] & (1 << 31)) && efer_lme)
-        mode = Mode::LongMode;
 }
 
 std::function<void()> exit_func;
@@ -260,6 +271,9 @@ void IvyBridge::Clock()
     is64 = (mode == Mode::LongMode);
     a64 = is64;
     a32 = is32;
+    rep = false;
+
+    rex.b = rex.x = rex.r = false;
 
     prefix = Segments::DS;
 
@@ -289,9 +303,64 @@ void IvyBridge::Clock()
             prefix = Segments::CS;
             opcode = ReadImm8(true);
             break;
+        case 0x41:
+            if (mode == Mode::LongMode)
+            {
+                rex.b = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x44:
+            if (mode == Mode::LongMode)
+            {
+                rex.r = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x45:
+            if (mode == Mode::LongMode)
+            {
+                rex.b = rex.r = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x4C:
+            if (mode == Mode::LongMode)
+            {
+                rex.r = true;
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
         case 0x48:
             if (mode == Mode::LongMode)
             {
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x49:
+            if (mode == Mode::LongMode)
+            {
+                rex.b = true;
                 is64 = true;
                 if (table == &extLookup32)
                     table = &extLookup64;
@@ -323,6 +392,11 @@ void IvyBridge::Clock()
             {
                 a32 = false;
             }
+            opcode = ReadImm8(true);
+            break;
+        case 0xf3:
+            rep = true;
+            printf("rep ");
             opcode = ReadImm8(true);
             break;
         default:

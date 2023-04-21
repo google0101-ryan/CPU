@@ -15,7 +15,10 @@ void IvyBridge::FetchModrm()
 
 void IvyBridge::FetchModrm16()
 {
-    modrm.value = ReadImm8(true);
+    uint8_t val = ReadImm8(true);
+    modrm.mod = (val >> 6) & 0x3;
+    modrm.reg = (val >> 3) & 0x7;
+    modrm.rm = val & 0x7;
 
     switch (modrm.mod)
     {
@@ -33,12 +36,18 @@ void IvyBridge::FetchModrm16()
 
 void IvyBridge::FetchModrm64()
 {
-    modrm.value = ReadImm8(true);
+    uint8_t val = ReadImm8(true);
+    modrm.mod = (val >> 6) & 0x3;
+    modrm.reg = (val >> 3) & 0x7;
+    modrm.rm = val & 0x7;
+
+    if (rex.r) modrm.reg += 8;
+    if (rex.b) modrm.rm += 8;
 
     switch (modrm.mod)
     {
     case 0:
-        if (modrm.rm == 4)
+        if (modrm.rm == 4 || modrm.rm == 12)
         {
             FetchSib32();
         }
@@ -46,11 +55,18 @@ void IvyBridge::FetchModrm64()
             disp32 = ReadImm32(true);
         break;
     case 1:
-        if (modrm.rm == 4)
+        if (modrm.rm == 4 || modrm.rm == 12)
         {
             FetchSib32();
         }
         disp8 = ReadImm8(true);
+        break;
+    case 2:
+        if (modrm.rm == 4  || modrm.rm == 12)
+        {
+            FetchSib32();
+        }
+        disp32 = ReadImm32(true);
         break;
     case 3:
         break;
@@ -62,7 +78,14 @@ void IvyBridge::FetchModrm64()
 
 void IvyBridge::FetchSib32()
 {
-    sib.value = ReadImm8(true);
+    sib_.value = ReadImm8(true);
+
+    sib.base = sib_.base;
+    sib.index = sib_.index;
+    sib.scale = sib_.scale;
+
+    if (rex.b) sib.base += 8;
+    if (rex.x) sib.index += 8;
 
     if (sib.base == 5)
     {
@@ -72,7 +95,10 @@ void IvyBridge::FetchSib32()
 
 void IvyBridge::FetchModrm32()
 {
-    modrm.value = ReadImm8(true);
+    uint8_t val = ReadImm8(true);
+    modrm.mod = (val >> 6) & 0x3;
+    modrm.reg = (val >> 3) & 0x7;
+    modrm.rm = val & 0x7;
 
     switch (modrm.mod)
     {
@@ -215,11 +241,40 @@ uint64_t IvyBridge::DecodeModrmAddr64(std::string &disasm)
     case 0:
         switch (modrm.rm)
         {
+        case 12:
+        case 4:
+        {
+            disasm = "[";
+            uint64_t addr = DecodeSIBAddr(disasm);
+            disasm += "]";
+            return addr;
+        }
         case 5:
+        case 13:
             disasm = "[rel 0x" + convert_int(rip+disp32) + "]";
             return rip + disp32;
         default:
-            printf("Unhandled modr/m 64 with mod=0, rm=%d\n", modrm.rm);
+            disasm += "[" + std::string(Reg64[modrm.rm]) + "]";
+            return regs[modrm.rm].reg64;
+        }
+    case 1:
+        switch (modrm.rm)
+        {
+        case 5:
+            disasm = "[rbp+" + convert_int(disp8) + "]";
+            return regs[RBP].reg64 + disp8;
+        default:
+            printf("Unhandled modr/m 64 with mod=1, rm=%d\n", modrm.rm);
+            exit(1);
+        }
+    case 2:
+        switch (modrm.rm)
+        {
+        case 5:
+            disasm = "[rbp+" + convert_int(disp32) + "]";
+            return regs[RBP].reg64 + disp32;
+        default:
+            printf("Unhandled modr/m 64 with mod=2, rm=%d\n", modrm.rm);
             exit(1);
         }
     default:
@@ -242,38 +297,33 @@ uint64_t IvyBridge::DecodeSIBAddr(std::string &disasm)
     uint32_t res;
     switch (sib.index)
     {
-    case 0: res = regs[RAX].reg32 * scale; break;
-    case 1: res = regs[RCX].reg32 * scale; break;
-    case 2: res = regs[RDX].reg32 * scale; break;
-    case 3: res = regs[RBX].reg32 * scale; break;
-    case 4: res = 0; break;
-    case 5: res = regs[RBP].reg32 * scale; break;
-    case 6: res = regs[RSI].reg32 * scale; break;
-    case 7: res = regs[RDI].reg32 * scale; break;
+    case 4:
+    case 12: 
+        res = 0; break;
+    default:
+        res = (a64 ? regs[sib.index].reg64 : regs[sib.index].reg32) * scale;
+        break;
     }
     
     if (sib.index != 4)
-        disasm += Reg32[sib.index] + std::string("*") + std::to_string(scale) + "+";
+        disasm += (a64 ? Reg64[sib.index] : Reg32[sib.index]) + std::string("*") + std::to_string(scale) + "+";
     
     switch (sib.base)
     {
-    case 0: disasm += "eax"; return regs[RAX].reg32 + res;
-    case 1: disasm += "ecx"; return regs[RCX].reg32 + res;
-    case 2: disasm += "edx"; return regs[RDX].reg32 + res;
-    case 3: disasm += "ebx"; return regs[RBX].reg32 + res;
-    case 4: disasm += "esp"; return regs[RSP].reg32 + res;
-    case 5: 
+    case 5:
+    case 13:
     {
         switch (modrm.mod)
         {
         case 0: disasm += convert_int(sib_disp32); return sib_disp32 + res;
-        case 1: disasm += "ebp+" + convert_int(disp8); return disp8 + regs[RBP].reg32 + res;
-        case 2: disasm += "ebp+" + convert_int(disp32); return disp32 + regs[RBP].reg32 + res;
+        case 1: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); return disp8 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+        case 2: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); return disp32 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
         }
         break;
     }
-    case 6: disasm += "esi"; return regs[RSI].reg32 + res;
-    case 7: disasm += "edi"; return regs[RDI].reg32 + res;
+    default:
+        disasm += a64 ? Reg64[sib.base] : Reg32[sib.base];
+        return (a64 ? regs[sib.base].reg64 : regs[sib.base].reg32) + res;
     }
 }
 
@@ -351,6 +401,20 @@ void IvyBridge::WriteModrm8(std::string &disasm, uint8_t val)
     }
 }
 
+void IvyBridge::WriteModrm16(std::string &disasm, uint16_t val)
+{
+    if (modrm.mod == 3)
+    {
+        regs[modrm.rm].reg16 = val;
+        disasm = Reg16[modrm.rm];
+    }
+    else
+    {
+        l1->Write16(DecodeModrmAddr(disasm), val);
+        disasm = "word" + disasm;
+    }
+}
+
 void IvyBridge::WriteModrm32(std::string &disasm, uint32_t val)
 {
     if (modrm.mod == 3)
@@ -381,16 +445,50 @@ void IvyBridge::WriteModrm64(std::string &disasm, uint64_t val)
 
 void IvyBridge::WriteReg8(Registers reg, uint8_t val)
 {
-    if (reg < 4)
-        regs[reg].lo = val;
+    if (rex.r || rex.b || rex.x)
+    {
+        switch (reg)
+        {
+        case 11:
+        case 3:
+        {
+            uint8_t& r = (rex.r ? regs[RBX].lo : regs[R11].lo);
+            r = val;
+            break;
+        }
+        default:
+            printf("Write to unknown 8-bit register with REX %d\n", reg);
+            exit(1);
+        }
+    }
     else
-        regs[reg].hi = val;
+    {
+        if (reg < 4)
+            regs[reg].lo = val;
+        else
+            regs[reg].hi = val;
+    }
 }
 
 uint8_t IvyBridge::ReadReg8(Registers reg)
 {
-    if (reg < 4)
-        return regs[reg].lo;
+    if (rex.r || rex.b || rex.x)
+    {
+        switch (reg)
+        {
+        case 11:
+        case 3:
+            return (rex.r ? regs[RBX].lo : regs[R11].lo);
+        default:
+            printf("Read from unknown 8-bit register with REX %d\n", reg);
+            exit(1);
+        }
+    }
     else
-        return regs[reg].hi;
+    {
+        if (reg < 4)
+            return regs[reg].lo;
+        else
+            return regs[reg].hi;
+    }
 }

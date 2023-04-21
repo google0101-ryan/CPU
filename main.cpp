@@ -1,6 +1,8 @@
 #include "x86.h"
 #include "rom.h"
 #include "ram.h"
+#include "pci/PCI.h"
+#include "pci/DramControllerQ35.h"
 
 IvyBridge* cores[4];
 RAM* ram;
@@ -22,6 +24,11 @@ int main()
 
     // This needs to be registered last to avoid hogging other device's address space
     ram = new RAM(1024*1024*15);
+
+    // PCI bus, to which most important devices are connected
+    PCIBus* pci = new PCIBus();
+
+    DramController* q35 = new DramController(pci);
 
     // An Ivy Bridge processor with 4 cores
     // All but core #0 are halted on startup, core #0 is the BSP
