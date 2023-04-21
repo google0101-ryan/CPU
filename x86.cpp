@@ -273,7 +273,7 @@ void IvyBridge::Clock()
     a32 = is32;
     rep = false;
 
-    rex.b = rex.x = rex.r = false;
+    rex.b = rex.x = rex.r = rex.rex = false;
 
     prefix = Segments::DS;
 
@@ -302,6 +302,15 @@ void IvyBridge::Clock()
         case 0x2e:
             prefix = Segments::CS;
             opcode = ReadImm8(true);
+            break;
+        case 0x40:
+            if (mode == Mode::LongMode)
+            {
+                rex.rex = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
             break;
         case 0x41:
             if (mode == Mode::LongMode)

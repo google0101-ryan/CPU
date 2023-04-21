@@ -445,7 +445,7 @@ void IvyBridge::WriteModrm64(std::string &disasm, uint64_t val)
 
 void IvyBridge::WriteReg8(Registers reg, uint8_t val)
 {
-    if (rex.r || rex.b || rex.x)
+    if (rex.r || rex.b || rex.x || rex.rex)
     {
         switch (reg)
         {
@@ -472,10 +472,12 @@ void IvyBridge::WriteReg8(Registers reg, uint8_t val)
 
 uint8_t IvyBridge::ReadReg8(Registers reg)
 {
-    if (rex.r || rex.b || rex.x)
+    if (rex.r || rex.b || rex.x || rex.rex)
     {
         switch (reg)
         {
+        case 6:
+            return regs[RSI].lo; // New register, sil
         case 11:
         case 3:
             return (rex.r ? regs[RBX].lo : regs[R11].lo);

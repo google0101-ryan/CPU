@@ -66,6 +66,8 @@ void IvyBridge::MakeOpcodeTables()
     lookup32[0x9C] = std::bind(&IvyBridge::Pushfq, this);
     lookup32[0xA8] = std::bind(&IvyBridge::TestAlImm8, this);
     for (int i = 0; i < 8; i++)
+        lookup32[0xB0 + i] = std::bind(&IvyBridge::MovR8Imm8, this);
+    for (int i = 0; i < 8; i++)
         lookup32[0xB8 + i] = std::bind(&IvyBridge::MovR32Imm32, this);
     lookup32[0xC6] = std::bind(&IvyBridge::MovRm8Imm8, this);
     lookup32[0xC1] = std::bind(&IvyBridge::CodeC1_32, this);
@@ -137,6 +139,7 @@ void IvyBridge::MakeOpcodeTables()
     extLookup64[0x85] = std::bind(&IvyBridge::JnzRel32, this);
     extLookup64[0x20] = std::bind(&IvyBridge::MovR64CRn, this);
     extLookup64[0x22] = std::bind(&IvyBridge::MovCRnR64, this);
+    extLookup64[0xB6] = std::bind(&IvyBridge::MovzxR64Rm8, this);
 }
 
 bool CalcPF(uint8_t result)
@@ -959,6 +962,19 @@ void IvyBridge::BtRm32R32()
         printf("bt %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
 }
 
+void IvyBridge::MovR8Imm8()
+{
+    uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0xB0;
+    if (rex.b) reg += 8;
+
+    uint8_t imm8 = ReadImm8(true);
+
+    WriteReg8(reg, imm8);
+
+    if (canDisassemble)
+        printf("mov %s, 0x%02x\n", Reg8[reg], imm8);
+}
+
 void IvyBridge::MovR32Imm32()
 {
     uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0xB8;
@@ -1587,4 +1603,19 @@ void IvyBridge::BtsRm32Imm8()
 
     if (canDisassemble)
         printf("bts %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+
+
+void IvyBridge::MovzxR64Rm8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint8_t rm8 = ReadModrm8(disasm);
+
+    regs[modrm.reg].reg64 = (uint64_t)rm8;
+
+    if (canDisassemble)
+        printf("movzx %s, %s\n", Reg64[modrm.reg], disasm.c_str());
 }

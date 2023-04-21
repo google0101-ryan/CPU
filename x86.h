@@ -85,6 +85,7 @@ private:
 
     struct
     {
+        bool rex = false;
         bool b = false;
         bool x = false;
         bool r = false;
@@ -214,6 +215,7 @@ private:
     void MovRm32R32(); // 0x89
     void MovR32Rm32(); // 0x8B
     void BtRm32R32(); // 0xA3
+    void MovR8Imm8(); // 0xB0+r
     void MovR32Imm32(); // 0xB8+r
     void CodeC1_32(); // 0xC1
     void ShlRm32Imm8(); // 0xC1 0x04
@@ -264,6 +266,9 @@ private:
     void MovzxR32Rm16(); // 0xB7
     void Code0FBA_32(); // 0xBA
     void BtsRm32Imm8(); // 0xBA 0x05
+
+    // 64-bit, 0x0f
+    void MovzxR64Rm8(); // 0xB6
 
     void CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t lim, uint16_t access);
     void CacheSegment(Segments seg, uint16_t sel);
