@@ -969,7 +969,7 @@ void IvyBridge::MovR8Imm8()
 
     uint8_t imm8 = ReadImm8(true);
 
-    WriteReg8(reg, imm8);
+    WriteReg8((Registers)reg, imm8);
 
     if (canDisassemble)
         printf("mov %s, 0x%02x\n", Reg8[reg], imm8);
