@@ -7,7 +7,7 @@
 
 static int coreId = 0;
 
-uint64_t IvyBridge::Read64(Segments seg, uint64_t addr)
+uint64_t TigerLake::Read64(Segments seg, uint64_t addr)
 {
     uint64_t a1 = l1->Read8(TranslateAddr(seg, addr++), false);
     uint64_t a2 = l1->Read8(TranslateAddr(seg, addr++), false);
@@ -20,7 +20,7 @@ uint64_t IvyBridge::Read64(Segments seg, uint64_t addr)
     return a1 | (a2 << 8) | (a3 << 16) | (a4 << 24) | (a5 << 32) | (a6 << 40) | (a7 << 48) | (a8 << 56);
 }
 
-uint32_t IvyBridge::Read32(Segments seg, uint64_t addr)
+uint32_t TigerLake::Read32(Segments seg, uint64_t addr)
 {
     uint8_t lo1 = l1->Read8(TranslateAddr(seg, addr++), false);
     uint8_t lo2 = l1->Read8(TranslateAddr(seg, addr++), false);
@@ -29,45 +29,45 @@ uint32_t IvyBridge::Read32(Segments seg, uint64_t addr)
     return lo1 | (lo2 << 8) | (hi1 << 16) | (hi2 << 24);
 }
 
-uint16_t IvyBridge::Read16(Segments seg, uint64_t addr)
+uint16_t TigerLake::Read16(Segments seg, uint64_t addr)
 {
     uint8_t lo = l1->Read8(TranslateAddr(seg, addr++), false);
     uint8_t hi = l1->Read8(TranslateAddr(seg, addr++), false);
     return lo | (hi << 8);
 }
 
-uint8_t IvyBridge::Read8(Segments seg, uint64_t addr)
+uint8_t TigerLake::Read8(Segments seg, uint64_t addr)
 {
     return l1->Read8(TranslateAddr(seg, addr), false);
 }
 
-void IvyBridge::Push32(uint32_t val)
+void TigerLake::Push32(uint32_t val)
 {
     regs[RSP].reg64 -= 4;
     l1->Write32(TranslateAddr(SS, regs[RSP].reg64), val);
 }
 
-void IvyBridge::Push64(uint64_t val)
+void TigerLake::Push64(uint64_t val)
 {
     regs[RSP].reg64 -= 8;
     l1->Write64(TranslateAddr(SS, regs[RSP].reg64), val);
 }
 
-uint64_t IvyBridge::Pop64()
+uint64_t TigerLake::Pop64()
 {
     uint64_t data = l1->Read64(TranslateAddr(SS, regs[RSP].reg64), false);
     regs[RSP].reg64 += 8;
     return data;
 }
 
-uint32_t IvyBridge::Pop32()
+uint32_t TigerLake::Pop32()
 {
     uint32_t data = l1->Read32(TranslateAddr(SS, regs[RSP].reg64), false);
     regs[RSP].reg64 += 4;
     return data;
 }
 
-uint64_t IvyBridge::TranslateAddr(Segments seg, uint64_t addr)
+uint64_t TigerLake::TranslateAddr(Segments seg, uint64_t addr)
 {
     if (mode == Mode::RealMode)
     {
@@ -139,19 +139,19 @@ uint64_t IvyBridge::TranslateAddr(Segments seg, uint64_t addr)
     }
 }
 
-uint8_t IvyBridge::ReadImm8(bool is_instr)
+uint8_t TigerLake::ReadImm8(bool is_instr)
 {
     return l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
 }
 
-uint16_t IvyBridge::ReadImm16(bool is_instr)
+uint16_t TigerLake::ReadImm16(bool is_instr)
 {
     uint8_t lo = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
     uint8_t hi = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
     return lo | (hi << 8);
 }
 
-uint32_t IvyBridge::ReadImm32(bool is_instr)
+uint32_t TigerLake::ReadImm32(bool is_instr)
 {
     uint8_t lo1 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
     uint8_t lo2 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
@@ -160,14 +160,14 @@ uint32_t IvyBridge::ReadImm32(bool is_instr)
     return lo1 | (lo2 << 8) | (hi1 << 16) | (hi2 << 24);
 }
 
-uint64_t IvyBridge::ReadImm64(bool is_instr)
+uint64_t TigerLake::ReadImm64(bool is_instr)
 {
     uint64_t low = ReadImm32(true);
     uint64_t high = ReadImm32(true);
     return (high << 32) | low;
 }
 
-void IvyBridge::CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t lim, uint16_t access)
+void TigerLake::CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t lim, uint16_t access)
 {
     segs[seg].selector = sel;
     segs[seg].base = base;
@@ -175,7 +175,7 @@ void IvyBridge::CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t
     segs[seg].access_rights = access;
 }
 
-void IvyBridge::CacheSegment(Segments seg, uint16_t sel)
+void TigerLake::CacheSegment(Segments seg, uint16_t sel)
 {
     if (mode == Mode::RealMode)
     {
@@ -206,7 +206,7 @@ void IvyBridge::CacheSegment(Segments seg, uint16_t sel)
     }
 }
 
-void IvyBridge::CheckModeChange()
+void TigerLake::CheckModeChange()
 {
     if ((cr[0] & 1) && mode == Mode::RealMode)
         mode = Mode::ProtectedMode;
@@ -214,7 +214,7 @@ void IvyBridge::CheckModeChange()
 
 std::function<void()> exit_func;
 
-IvyBridge::IvyBridge()
+TigerLake::TigerLake()
 {
     l1 = new Cache();
 
@@ -227,13 +227,13 @@ IvyBridge::IvyBridge()
     canDisassemble = true;
 }
 
-IvyBridge::~IvyBridge()
+TigerLake::~TigerLake()
 {
     Dump();
     delete l1;
 }
 
-void IvyBridge::Reset()
+void TigerLake::Reset()
 {
     std::memset(regs, 0, sizeof(regs));
     
@@ -258,10 +258,13 @@ void IvyBridge::Reset()
     longJumpDone = false;
 }
 
-void IvyBridge::Clock()
+void TigerLake::Clock()
 {
     if (halted)
         return;
+
+    if (canDisassemble)
+        printf("0x%08lx: ", TranslateAddr(CS, rip));
 
     uint8_t opcode = l1->Read8(TranslateAddr(CS, rip++), true);
 
@@ -273,7 +276,8 @@ void IvyBridge::Clock()
     a32 = is32;
     rep = false;
 
-    rex.b = rex.x = rex.r = rex.rex = false;
+    rex.b = rex.x = 
+        rex.r = rex.rex = false;
 
     prefix = Segments::DS;
 
@@ -283,11 +287,14 @@ void IvyBridge::Clock()
     case Mode::ProtectedMode: table = &lookup32; break;
     case Mode::LongMode: table = &lookup32; break;
     }
+
+    fwait = false;
     
     bool isPrefix = true;
 
     while (isPrefix)
     {
+        printf("0x%02x ", opcode);
         switch (opcode)
         {
         case 0x0f:
@@ -295,12 +302,17 @@ void IvyBridge::Clock()
             {
             case Mode::RealMode: table = &extLookup16; break;
             case Mode::ProtectedMode: table = &extLookup32; break;
-            case Mode::LongMode: if (is64) table = &extLookup64; else table = &extLookup32; break;
+            case Mode::LongMode: if (table == &lookup64) table = &extLookup64; else table = &extLookup32; break;
             }
             opcode = ReadImm8(true);
+            isPrefix = false;
             break;
         case 0x2e:
             prefix = Segments::CS;
+            opcode = ReadImm8(true);
+            break;
+        case 0x3e:
+            prefix = Segments::DS;
             opcode = ReadImm8(true);
             break;
         case 0x40:
@@ -343,6 +355,22 @@ void IvyBridge::Clock()
             if (mode == Mode::LongMode)
             {
                 rex.r = true;
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        // REX.WRB
+        case 0x4D:
+            if (mode == Mode::LongMode)
+            {
+                rex.r = true;
+                rex.b = true;
                 is64 = true;
                 if (table == &extLookup32)
                     table = &extLookup64;
@@ -408,11 +436,17 @@ void IvyBridge::Clock()
             printf("rep ");
             opcode = ReadImm8(true);
             break;
+        case 0x9B:
+            fwait = true;
+            opcode = ReadImm8(true);
+            break;
         default:
             isPrefix = false;
             break;
         }
     }
+
+    printf("\t");
 
     if (!(*table)[opcode])
     {
@@ -435,7 +469,7 @@ void IvyBridge::Clock()
     (*table)[opcode]();
 }
 
-void IvyBridge::Dump()
+void TigerLake::Dump()
 {
     for (int i = 0; i < NUM_REGS; i++)
         printf("%s\t->\t0x%08lx\n", Reg64[i], regs[i].reg64);

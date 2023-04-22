@@ -2,9 +2,10 @@
 #include "rom.h"
 #include "ram.h"
 #include "pci/PCI.h"
-#include "pci/DramControllerQ35.h"
+#include "pci/DramControllerTigerLake.h"
+#include "pci/LPCBridgeTigerLake.h" 
 
-IvyBridge* cores[4];
+TigerLake* cores[8];
 RAM* ram;
 
 void atexit_func()
@@ -29,20 +30,23 @@ int main()
     PCIBus* pci = new PCIBus();
 
     DramController* q35 = new DramController(pci);
+    LPCBridge* lpc = new LPCBridge(pci);
 
     // An Ivy Bridge processor with 4 cores
     // All but core #0 are halted on startup, core #0 is the BSP
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 8; i++)
     {
-        cores[i] = new IvyBridge();
+        cores[i] = new TigerLake();
         cores[i]->Reset();
     }
+
+    IOBus::InitDebugcon();
 
     std::atexit(atexit_func);
 
     while (1)
     {
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 8; i++)
             cores[i]->Clock();
     }
 

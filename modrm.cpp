@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-void IvyBridge::FetchModrm()
+void TigerLake::FetchModrm()
 {
     if (a64)
         FetchModrm64();
@@ -13,7 +13,7 @@ void IvyBridge::FetchModrm()
         FetchModrm16();
 }
 
-void IvyBridge::FetchModrm16()
+void TigerLake::FetchModrm16()
 {
     uint8_t val = ReadImm8(true);
     modrm.mod = (val >> 6) & 0x3;
@@ -34,7 +34,7 @@ void IvyBridge::FetchModrm16()
     }
 }
 
-void IvyBridge::FetchModrm64()
+void TigerLake::FetchModrm64()
 {
     uint8_t val = ReadImm8(true);
     modrm.mod = (val >> 6) & 0x3;
@@ -76,7 +76,7 @@ void IvyBridge::FetchModrm64()
     }
 }
 
-void IvyBridge::FetchSib32()
+void TigerLake::FetchSib32()
 {
     sib_.value = ReadImm8(true);
 
@@ -93,7 +93,7 @@ void IvyBridge::FetchSib32()
     }
 }
 
-void IvyBridge::FetchModrm32()
+void TigerLake::FetchModrm32()
 {
     uint8_t val = ReadImm8(true);
     modrm.mod = (val >> 6) & 0x3;
@@ -126,7 +126,7 @@ void IvyBridge::FetchModrm32()
 }
 
 
-uint64_t IvyBridge::DecodeModrmAddr(std::string& disasm)
+uint64_t TigerLake::DecodeModrmAddr(std::string& disasm)
 {
     if (!a32 && !a64)
         return DecodeModrmAddr16(disasm);
@@ -136,7 +136,7 @@ uint64_t IvyBridge::DecodeModrmAddr(std::string& disasm)
         return DecodeModrmAddr64(disasm);
 }
 
-uint64_t IvyBridge::DecodeModrmAddr16(std::string &disasm)
+uint64_t TigerLake::DecodeModrmAddr16(std::string &disasm)
 {
     switch (modrm.mod)
     {
@@ -178,7 +178,7 @@ uint64_t IvyBridge::DecodeModrmAddr16(std::string &disasm)
     }
 }
 
-uint64_t IvyBridge::DecodeModrmAddr32(std::string &disasm)
+uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
 {
     switch (modrm.mod)
     {
@@ -234,7 +234,7 @@ uint64_t IvyBridge::DecodeModrmAddr32(std::string &disasm)
     }
 }
 
-uint64_t IvyBridge::DecodeModrmAddr64(std::string &disasm)
+uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
 {
     switch (modrm.mod)
     {
@@ -260,9 +260,37 @@ uint64_t IvyBridge::DecodeModrmAddr64(std::string &disasm)
     case 1:
         switch (modrm.rm)
         {
+        case 0:
+            disasm = "[rax+" + convert_int(disp8) + "]";
+            return regs[RAX].reg64 + disp8;
+        case 2:
+            disasm = "[rdx+" + convert_int(disp8) + "]";
+            return regs[RDX].reg64 + disp8;
+        case 3:
+            disasm = "[rbx+" + convert_int(disp8) + "]";
+            return regs[RBX].reg64 + disp8;
+        case 4:
+        {
+            disasm = "[";
+            uint64_t addr = DecodeSIBAddr(disasm);
+            disasm += "+" + convert_int(disp8) + "]";
+            return addr + disp8;
+        }
         case 5:
             disasm = "[rbp+" + convert_int(disp8) + "]";
             return regs[RBP].reg64 + disp8;
+        case 6:
+            disasm = "[rsi+" + convert_int(disp8) + "]";
+            return regs[RSI].reg64 + disp8;
+        case 9:
+            disasm = "[r9" + convert_int(disp8) + "]";
+            return regs[R9].reg64 + disp8;
+        case 13:
+            disasm = "[r13+" + convert_int(disp8) + "]";
+            return regs[R13].reg64 + disp8;
+        case 15:
+            disasm = "[r15+" + convert_int(disp8) + "]";
+            return regs[R15].reg64 + disp8;
         default:
             printf("Unhandled modr/m 64 with mod=1, rm=%d\n", modrm.rm);
             exit(1);
@@ -283,7 +311,7 @@ uint64_t IvyBridge::DecodeModrmAddr64(std::string &disasm)
     }
 }
 
-uint64_t IvyBridge::DecodeSIBAddr(std::string &disasm)
+uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
 {
     int scale = 1;
     switch (sib.scale)
@@ -327,11 +355,11 @@ uint64_t IvyBridge::DecodeSIBAddr(std::string &disasm)
     }
 }
 
-uint64_t IvyBridge::ReadModrm64(std::string &disasm)
+uint64_t TigerLake::ReadModrm64(std::string &disasm)
 {
     if (modrm.mod == 3)
     {
-        disasm = Reg32[modrm.rm];
+        disasm = Reg64[modrm.rm];
         return regs[modrm.rm].reg64;
     }
     else
@@ -342,7 +370,7 @@ uint64_t IvyBridge::ReadModrm64(std::string &disasm)
     }
 }
 
-uint32_t IvyBridge::ReadModrm32(std::string &disasm)
+uint32_t TigerLake::ReadModrm32(std::string &disasm)
 {
     if (modrm.mod == 3)
     {
@@ -357,7 +385,7 @@ uint32_t IvyBridge::ReadModrm32(std::string &disasm)
     }
 }
 
-uint16_t IvyBridge::ReadModrm16(std::string &disasm)
+uint16_t TigerLake::ReadModrm16(std::string &disasm)
 {
     if (modrm.mod == 3)
     {
@@ -372,7 +400,7 @@ uint16_t IvyBridge::ReadModrm16(std::string &disasm)
     }
 }
 
-uint8_t IvyBridge::ReadModrm8(std::string &disasm)
+uint8_t TigerLake::ReadModrm8(std::string &disasm)
 {
     if (modrm.mod == 3)
     {
@@ -387,7 +415,7 @@ uint8_t IvyBridge::ReadModrm8(std::string &disasm)
     }
 }
 
-void IvyBridge::WriteModrm8(std::string &disasm, uint8_t val)
+void TigerLake::WriteModrm8(std::string &disasm, uint8_t val)
 {
     if (modrm.mod == 3)
     {
@@ -401,7 +429,7 @@ void IvyBridge::WriteModrm8(std::string &disasm, uint8_t val)
     }
 }
 
-void IvyBridge::WriteModrm16(std::string &disasm, uint16_t val)
+void TigerLake::WriteModrm16(std::string &disasm, uint16_t val)
 {
     if (modrm.mod == 3)
     {
@@ -415,7 +443,7 @@ void IvyBridge::WriteModrm16(std::string &disasm, uint16_t val)
     }
 }
 
-void IvyBridge::WriteModrm32(std::string &disasm, uint32_t val)
+void TigerLake::WriteModrm32(std::string &disasm, uint32_t val)
 {
     if (modrm.mod == 3)
     {
@@ -429,7 +457,7 @@ void IvyBridge::WriteModrm32(std::string &disasm, uint32_t val)
     }
 }
 
-void IvyBridge::WriteModrm64(std::string &disasm, uint64_t val)
+void TigerLake::WriteModrm64(std::string &disasm, uint64_t val)
 {
     if (modrm.mod == 3)
     {
@@ -443,12 +471,21 @@ void IvyBridge::WriteModrm64(std::string &disasm, uint64_t val)
     }
 }
 
-void IvyBridge::WriteReg8(Registers reg, uint8_t val)
+void TigerLake::WriteReg8(Registers reg, uint8_t val)
 {
     if (rex.r || rex.b || rex.x || rex.rex)
     {
         switch (reg)
         {
+        case 10:
+            regs[R10].lo = val;
+            break;
+        case 13:
+            regs[R13].lo = val;
+            break;
+        case 14:
+            regs[R14].lo = val;
+            break;
         case 11:
         case 3:
         {
@@ -470,17 +507,27 @@ void IvyBridge::WriteReg8(Registers reg, uint8_t val)
     }
 }
 
-uint8_t IvyBridge::ReadReg8(Registers reg)
+uint8_t TigerLake::ReadReg8(Registers reg)
 {
     if (rex.r || rex.b || rex.x || rex.rex)
     {
         switch (reg)
         {
+        case 2:
+            return regs[RDX].lo;
         case 6:
             return regs[RSI].lo; // New register, sil
         case 11:
         case 3:
             return (rex.r ? regs[RBX].lo : regs[R11].lo);
+        case 10:
+            return regs[R10].lo;
+        case 12:
+            return regs[R12].lo;
+        case 13:
+            return regs[R13].lo;
+        case 14:
+            return regs[R14].lo;
         default:
             printf("Read from unknown 8-bit register with REX %d\n", reg);
             exit(1);
