@@ -4,6 +4,7 @@
 #include "pci/PCI.h"
 #include "pci/DramControllerTigerLake.h"
 #include "pci/LPCBridgeTigerLake.h" 
+#include "Interrupts/LegacyPIC.h"
 
 TigerLake* cores[8];
 RAM* ram;
@@ -29,8 +30,13 @@ int main()
     // PCI bus, to which most important devices are connected
     PCIBus* pci = new PCIBus();
 
+    // ICH9 DRAM controller
     DramController* q35 = new DramController(pci);
+    // ICH9 Low pin count bridge
     LPCBridge* lpc = new LPCBridge(pci);
+
+    // 8259 Programmable Interrupt Controller
+    LegacyPIC* pic = new LegacyPIC();
 
     // An Ivy Bridge processor with 4 cores
     // All but core #0 are halted on startup, core #0 is the BSP

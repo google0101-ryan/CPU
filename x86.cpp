@@ -22,6 +22,20 @@ uint64_t TigerLake::Read64(Segments seg, uint64_t addr)
 
 uint32_t TigerLake::Read32(Segments seg, uint64_t addr)
 {
+    if (addr >= 0xfee00000 && addr <= 0xfee003f0)
+    {
+        switch (addr-0xfee00000)
+        {
+        case 0xf0:
+            return lapic->ReadSpuriousVec();
+        case 0x320:
+            return lapic->ReadTimerLVT();
+        default:
+            printf("Read32 from unknown LAPIC register 0x%08lx\n", addr-0xfee00000);
+            exit(1);
+        }
+    }
+
     uint8_t lo1 = l1->Read8(TranslateAddr(seg, addr++), false);
     uint8_t lo2 = l1->Read8(TranslateAddr(seg, addr++), false);
     uint8_t hi1 = l1->Read8(TranslateAddr(seg, addr++), false);
@@ -41,10 +55,41 @@ uint8_t TigerLake::Read8(Segments seg, uint64_t addr)
     return l1->Read8(TranslateAddr(seg, addr), false);
 }
 
+void TigerLake::Write32(Segments seg, uint64_t addr, uint32_t val)
+{
+    if (addr >= 0xfee00000 && addr <= 0xfee003f0)
+    {
+        switch (addr-0xfee00000)
+        {
+        case 0xf0:
+            lapic->WriteSpuriousVec(val);
+            break;
+        case 0x320:
+            lapic->WriteTimerLVT(val);
+            break;
+        case 0x380:
+            lapic->WriteInitialCount(val);
+            break;
+        default:
+            printf("Write32 to unknown LAPIC register 0x%08lx\n", addr-0xfee00000);
+            exit(1);
+        }
+        return;
+    }
+
+    l1->Write32(addr, val);
+}
+
+void TigerLake::Push8(uint8_t val)
+{
+    regs[RSP].reg64--;
+    l1->Write8(TranslateAddr(SS, regs[RSP].reg64), val);
+}
+
 void TigerLake::Push32(uint32_t val)
 {
     regs[RSP].reg64 -= 4;
-    l1->Write32(TranslateAddr(SS, regs[RSP].reg64), val);
+    Write32(SS, regs[RSP].reg64, val);
 }
 
 void TigerLake::Push64(uint64_t val)
@@ -225,6 +270,8 @@ TigerLake::TigerLake()
     MakeOpcodeTables();
 
     canDisassemble = true;
+
+    lapic = new LocalAPIC();
 }
 
 TigerLake::~TigerLake()
@@ -254,8 +301,17 @@ void TigerLake::Reset()
     if (id != 0)
         halted = true;
     
+    efer.val = 0;
+
+    if (id == 0)
+        ia32_apic_base = 0xFEE00900;
+    else
+        ia32_apic_base = 0xFEE00800;
+
     a20 = true;
     longJumpDone = false;
+
+    lapic->Reset();
 }
 
 void TigerLake::Clock()
@@ -467,6 +523,8 @@ void TigerLake::Clock()
     }
 
     (*table)[opcode]();
+
+    lapic->TickTimer();
 }
 
 void TigerLake::Dump()

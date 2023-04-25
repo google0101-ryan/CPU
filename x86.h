@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <functional>
 #include <string>
+#include <Interrupts/LocalAPIC.h>
 
 class TigerLake
 {
@@ -35,6 +36,9 @@ private:
     uint16_t Read16(Segments seg, uint64_t addr);
     uint8_t Read8(Segments seg, uint64_t addr);
 
+    void Write32(Segments seg, uint64_t addr, uint32_t val);
+
+    void Push8(uint8_t val);
     void Push32(uint32_t val);
     void Push64(uint64_t val);
 
@@ -142,6 +146,10 @@ private:
         };
     } efer;
 
+    uint64_t ia32_apic_base;
+
+    LocalAPIC* lapic;
+
     struct
     {
         uint16_t control;
@@ -178,6 +186,7 @@ private:
     // All modes
     void AndAlImm8(); // 0x24
     void CmpAlImm8(); // 0x3C
+    void PushImm8(); // 0x6A
     void JcRel8(); // 0x72
     void JncRel8(); // 0x73
     void JzRel8(); // 0x74
@@ -187,6 +196,7 @@ private:
     void JsRel8(); // 0x79
     void JlRel8(); // 0x7C
     void JgeRel8(); // 0x7D
+    void JngRel8(); // 0x7E
     void JgRel8(); // 0x7F
     void Code80(); // 0x80
     void OrRm8Imm8(); // 0x80 0x01
@@ -223,6 +233,7 @@ private:
     void AddR32Rm32(); // 0x03
     void AddEaxImm32(); // 0x05
     void OrRm32R32(); // 0x09
+    void OrEaxImm32(); // 0x0d
     void AndRm32R32(); // 0x21
     void AndEaxImm32(); // 0x25
     void SubEaxImm32(); // 0x2D
@@ -235,11 +246,13 @@ private:
     void PopR32(); // 0x58+r
     void Outsb(); // 0x6E
     void Code81_32(); // 0x81
+    void AddRm32Imm32(); // 0x81 0x00
     void OrRm32Imm32(); // 0x81 0x01
     void AndRm32Imm32(); // 0x81 0x04
     void CmpRm32Imm32(); // 0x81 0x07
     void Code83_32(); // 0x83
     void AddRm32Imm8(); // 0x83 0x00
+    void OrRm32Imm8(); // 0x83 0x01
     void AndRm32Imm8(); // 0x83 0x04
     void SubRm32Imm8(); // 0x83 0x05
     void CmpRm32Imm8(); // 0x83 0x07
@@ -254,11 +267,13 @@ private:
     void ShlRm32Imm8(); // 0xC1 0x04
     void Ret(); // 0xC3
     void MovRm32Imm32(); // 0xC7
+    void Leave(); // 0xC9
     void CodeD9(); // 0xD9
     void Fldcw(); // 0xD9 0x05
     void CodeDB(); // 0xDB
     void Finit(); // 0xE3 0xDB 0x04
     void LoopEcxRel8(); // 0xE2
+    void Jecxz(); // 0xE3
     void CallRel32(); // 0xE8
     void JmpRel32(); // 0xE9
     void JmpPtr1632(); // 0xEA
@@ -273,10 +288,12 @@ private:
     // 64-bit mode
     void AddRm64R64(); // 0x01
     void AddR64Rm64(); // 0x03
+    void OrRm64R64(); // 0x09
     void OrR64Rm64(); // 0x0B
     void OrRaxImm32(); // 0x0D
     void SbbRm64R64(); // 0x19
     void AndRm64R64(); // 0x21
+    void AndRaxImm32(); // 0x25
     void SubRm64R64(); // 0x29
     void SubRaxImm32(); // 0x2D
     void SubR64Rm64(); // 0x3B
@@ -292,6 +309,7 @@ private:
     void Code83_64(); // 0x83
     void AddRm64Imm8(); // 0x83 0x00
     void OrRm64Imm8(); // 0x83 0x01
+    void AndRm64Imm8(); // 0x83 0x04
     void SubRm64Imm8(); // 0x83 0x05
     void CmpRm64Imm8(); // 0x83 0x07
     void TestRm64R64(); // 0x85
@@ -312,6 +330,7 @@ private:
     void DivRm64(); // 0xF7 0x06
     void CodeFF_64(); // 0xFF
     void IncRm64(); // 0xFF 0x00
+    void DecRm64(); // 0xFF 0x01
 
     // All modes, 0x0f
     void Code0f01(); // 0x01
@@ -324,9 +343,11 @@ private:
     void Rdmsr(); // 0x32
     void JnzRel32(); // 0x85
     void SetneRm8(); // 0x95
+    void SetaRm8(); // 0x97
     void Cpuid(); // 0xA2
 
     // 32-bit, 0x0f
+    void JcRel32(); // 0x82
     void JncRel32(); // 0x83
     void JzRel32(); // 0x84
     void JaRel32(); // 0x87

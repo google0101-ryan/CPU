@@ -190,10 +190,10 @@ uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
         {
         case 0:
             disasm += "eax]";
-            return regs[RAX].reg32;
+            return a64 ? regs[RAX].reg64 : regs[RAX].reg32;
         case 3:
             disasm += "ebx]";
-            return regs[RBX].reg32;
+            return a64 ? regs[RBX].reg64 : regs[RBX].reg32;
         case 4:
         {
             uint64_t addr = DecodeSIBAddr(disasm);
@@ -216,13 +216,16 @@ uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
         {
         case 0:
             disasm += "eax + " + convert_int(disp8) + "]";
-            return regs[RAX].reg32 + disp8;
+            return (a64 ? regs[RAX].reg64 : regs[RAX].reg32) + (int64_t)disp8;
+        case 1:
+            disasm += "ecx + " + convert_int(disp8) + "]";
+            return (a64 ? regs[RCX].reg64 : regs[RCX].reg32) + (int64_t)disp8;
         case 3:
             disasm += "ebx + " + convert_int(disp8) + "]";
-            return regs[RBX].reg32 + disp8;
+            return (a64 ? regs[RBX].reg64 : regs[RBX].reg32) + (int64_t)disp8;
         case 5:
             disasm += "ebp + " + convert_int(disp8) + "]";
-            return regs[RBP].reg32 + disp8;
+            return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + (int64_t)disp8;
         default:
             printf("Unhandled modr/m 32 with mod=1, rm=%d\n", modrm.rm);
             exit(1);
@@ -252,7 +255,7 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
         case 5:
         case 13:
             disasm = "[rel 0x" + convert_int(rip+disp32) + "]";
-            return rip + disp32;
+            return rip + (int64_t)disp32;
         default:
             disasm += "[" + std::string(Reg64[modrm.rm]) + "]";
             return regs[modrm.rm].reg64;
@@ -262,35 +265,41 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
         {
         case 0:
             disasm = "[rax+" + convert_int(disp8) + "]";
-            return regs[RAX].reg64 + disp8;
+            return regs[RAX].reg64 + (int64_t)disp8;
+        case 1:
+            disasm = "[rcx+" + convert_int(disp8) + "]";
+            return regs[RCX].reg64 + (int64_t)disp8;
         case 2:
             disasm = "[rdx+" + convert_int(disp8) + "]";
-            return regs[RDX].reg64 + disp8;
+            return regs[RDX].reg64 + (int64_t)disp8;
         case 3:
             disasm = "[rbx+" + convert_int(disp8) + "]";
-            return regs[RBX].reg64 + disp8;
+            return regs[RBX].reg64 + (int64_t)disp8;
         case 4:
         {
             disasm = "[";
             uint64_t addr = DecodeSIBAddr(disasm);
             disasm += "+" + convert_int(disp8) + "]";
-            return addr + disp8;
+            return addr + (int64_t)disp8;
         }
         case 5:
             disasm = "[rbp+" + convert_int(disp8) + "]";
-            return regs[RBP].reg64 + disp8;
+            return regs[RBP].reg64 + (int64_t)disp8;
         case 6:
             disasm = "[rsi+" + convert_int(disp8) + "]";
-            return regs[RSI].reg64 + disp8;
+            return regs[RSI].reg64 + (int64_t)disp8;
         case 9:
             disasm = "[r9" + convert_int(disp8) + "]";
-            return regs[R9].reg64 + disp8;
+            return regs[R9].reg64 + (int64_t)disp8;
+        case 12:
+            disasm = "[r12+" + convert_int(disp8) + "]";
+            return regs[R12].reg64 + disp8;
         case 13:
             disasm = "[r13+" + convert_int(disp8) + "]";
             return regs[R13].reg64 + disp8;
         case 15:
             disasm = "[r15+" + convert_int(disp8) + "]";
-            return regs[R15].reg64 + disp8;
+            return regs[R15].reg64 + (int64_t)disp8;
         default:
             printf("Unhandled modr/m 64 with mod=1, rm=%d\n", modrm.rm);
             exit(1);
@@ -298,9 +307,12 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
     case 2:
         switch (modrm.rm)
         {
+        case 3:
+            disasm = "[rbx+" + convert_int(disp32) + "]";
+            return regs[RBX].reg64 + (int64_t)disp32;
         case 5:
             disasm = "[rbp+" + convert_int(disp32) + "]";
-            return regs[RBP].reg64 + disp32;
+            return regs[RBP].reg64 + (int64_t)disp32;
         default:
             printf("Unhandled modr/m 64 with mod=2, rm=%d\n", modrm.rm);
             exit(1);
@@ -343,7 +355,7 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
     {
         switch (modrm.mod)
         {
-        case 0: disasm += convert_int(sib_disp32); return sib_disp32 + res;
+        case 0: disasm += convert_int(sib_disp32); return (int64_t)sib_disp32 + res;
         case 1: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); return disp8 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
         case 2: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); return disp32 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
         }
@@ -452,7 +464,7 @@ void TigerLake::WriteModrm32(std::string &disasm, uint32_t val)
     }
     else
     {
-        l1->Write32(DecodeModrmAddr(disasm), val);
+        Write32(prefix, DecodeModrmAddr(disasm), val);
         disasm = "dword" + disasm;
     }
 }
@@ -475,35 +487,14 @@ void TigerLake::WriteReg8(Registers reg, uint8_t val)
 {
     if (rex.r || rex.b || rex.x || rex.rex)
     {
-        switch (reg)
-        {
-        case 10:
-            regs[R10].lo = val;
-            break;
-        case 13:
-            regs[R13].lo = val;
-            break;
-        case 14:
-            regs[R14].lo = val;
-            break;
-        case 11:
-        case 3:
-        {
-            uint8_t& r = (rex.r ? regs[RBX].lo : regs[R11].lo);
-            r = val;
-            break;
-        }
-        default:
-            printf("Write to unknown 8-bit register with REX %d\n", reg);
-            exit(1);
-        }
+        regs[reg].lo = val;
     }
     else
     {
         if (reg < 4)
             regs[reg].lo = val;
         else
-            regs[reg].hi = val;
+            regs[reg-4].hi = val;
     }
 }
 
@@ -511,33 +502,13 @@ uint8_t TigerLake::ReadReg8(Registers reg)
 {
     if (rex.r || rex.b || rex.x || rex.rex)
     {
-        switch (reg)
-        {
-        case 2:
-            return regs[RDX].lo;
-        case 6:
-            return regs[RSI].lo; // New register, sil
-        case 11:
-        case 3:
-            return (rex.r ? regs[RBX].lo : regs[R11].lo);
-        case 10:
-            return regs[R10].lo;
-        case 12:
-            return regs[R12].lo;
-        case 13:
-            return regs[R13].lo;
-        case 14:
-            return regs[R14].lo;
-        default:
-            printf("Read from unknown 8-bit register with REX %d\n", reg);
-            exit(1);
-        }
+        return regs[reg].lo;
     }
     else
     {
         if (reg < 4)
             return regs[reg].lo;
         else
-            return regs[reg].hi;
+            return regs[reg-4].hi;
     }
 }

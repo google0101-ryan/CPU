@@ -12,7 +12,7 @@ inline std::string convert_int(int n)
    return ss.str();
 }
 
-union Register
+union [[gnu::packed]] Register
 {
     uint64_t reg64;
     uint32_t reg32;

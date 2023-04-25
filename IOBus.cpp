@@ -12,7 +12,7 @@ void IOBus::InitDebugcon()
 void IOBus::RegisterDevice(IODevice *dev, uint16_t start, uint16_t end)
 {
     printf("Registered IO device \"%s\" at 0x%04x to 0x%04x\n", dev->GetName().c_str(), start, end);
-    for (auto i = start; i < end; i++)
+    for (auto i = start; i < end+1; i++)
         io_devices[i] = dev;
 }
 
@@ -41,7 +41,7 @@ uint16_t IOBus::In16(uint16_t port)
 uint8_t IOBus::In8(uint16_t port)
 {
     if (port == 0x402)
-        return 0x00;
+        return 0xE9;
 
     if (!io_devices[port])
     {
