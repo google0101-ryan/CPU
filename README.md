@@ -14,6 +14,12 @@ Get OVMF actually working
 - [x] amd64 paging
 - [x] 32-bit mode, 64-bit mode, and switching between them
 - [x] The rarely-emulated segment register caching
+- [ ] amd64 SIMD extensions like MMX, SSE, SSE2, AVX, etc
+- [ ] Support for the VMWare SVGA virtual device
+- [ ] Support for PCIe
+- [ ] Support for AHCI
+- [ ] Support for NVMe
+- [ ] Support for Intel Graphics (maybe? Kind of far-fetched, tbh)
 
 # FAQ
 
