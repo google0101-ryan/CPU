@@ -194,15 +194,15 @@ uint8_t Cache::Read8(uint64_t addr, bool is_instr)
 
 uint16_t Cache::Read16(uint64_t addr, bool is_instr)
 {
-    return Read8(addr, is_instr) | (Read8(addr+1, is_instr) << 8);
+    return Bus::Read16(addr);
 }
 
 uint32_t Cache::Read32(uint64_t addr, bool is_instr)
 {
-    return Read16(addr, is_instr) | (Read16(addr+2, is_instr) << 16);
+    return Bus::Read32(addr);
 }
 
 uint64_t Cache::Read64(uint64_t addr, bool is_instr)
 {
-    return Read32(addr, is_instr) | ((uint64_t)Read32(addr+4, is_instr) << 32);
+    return Bus::Read64(addr);
 }

@@ -6,6 +6,7 @@ void TigerLake::MakeOpcodeTables()
 {
     lookup16[0x24] = std::bind(&TigerLake::AndAlImm8, this);
     lookup16[0x3C] = std::bind(&TigerLake::CmpAlImm8, this);
+    lookup16[0x3D] = std::bind(&TigerLake::CmpAxImm16, this);
     lookup16[0x72] = std::bind(&TigerLake::JcRel8, this);
     lookup16[0x73] = std::bind(&TigerLake::JncRel8, this);
     lookup16[0x74] = std::bind(&TigerLake::JzRel8, this);
@@ -16,6 +17,7 @@ void TigerLake::MakeOpcodeTables()
     lookup16[0x80] = std::bind(&TigerLake::Code80, this);
     lookup16[0x81] = std::bind(&TigerLake::Code81_16, this);
     lookup16[0x84] = std::bind(&TigerLake::TestRm8R8, this);
+    lookup16[0x89] = std::bind(&TigerLake::MovRm16R16, this);
     lookup16[0x8A] = std::bind(&TigerLake::MovR8Rm8, this);
     lookup16[0x8B] = std::bind(&TigerLake::MovR16Rm16, this);
     lookup16[0x8E] = std::bind(&TigerLake::MovSregRm16, this);
@@ -38,13 +40,21 @@ void TigerLake::MakeOpcodeTables()
     lookup32[0x03] = std::bind(&TigerLake::AddR32Rm32, this);
     lookup32[0x05] = std::bind(&TigerLake::AddEaxImm32, this);
     lookup32[0x09] = std::bind(&TigerLake::OrRm32R32, this);
+    lookup32[0x0B] = std::bind(&TigerLake::OrR32Rm32, this);
     lookup32[0x0D] = std::bind(&TigerLake::OrEaxImm32, this);
+    lookup32[0x19] = std::bind(&TigerLake::SbbRm32R32, this);
     lookup32[0x21] = std::bind(&TigerLake::AndRm32R32, this);
+    lookup32[0x23] = std::bind(&TigerLake::AndR32Rm32, this);
     lookup32[0x24] = std::bind(&TigerLake::AndAlImm8, this);
     lookup32[0x25] = std::bind(&TigerLake::AndEaxImm32, this);
+    lookup32[0x29] = std::bind(&TigerLake::SubRm32R32, this);
+    lookup32[0x2B] = std::bind(&TigerLake::SubR32Rm32, this);
     lookup32[0x2D] = std::bind(&TigerLake::SubEaxImm32, this);
     lookup32[0x31] = std::bind(&TigerLake::XorRm32R32, this);
+    lookup32[0x33] = std::bind(&TigerLake::XorR32Rm32, this);
+    lookup32[0x38] = std::bind(&TigerLake::CmpRm8R8, this);
     lookup32[0x39] = std::bind(&TigerLake::CmpRm32R32, this);
+    lookup32[0x3B] = std::bind(&TigerLake::CmpR32Rm32, this);
     lookup32[0x3C] = std::bind(&TigerLake::CmpAlImm8, this);
     lookup32[0x3D] = std::bind(&TigerLake::CmpEaxImm32, this);
     for (int i = 0; i < 8; i++)
@@ -56,13 +66,15 @@ void TigerLake::MakeOpcodeTables()
     for (int i = 0; i < 8; i++)
         lookup32[0x58+i] = std::bind(&TigerLake::PopR32, this);
     lookup32[0x6A] = std::bind(&TigerLake::PushImm8, this);
+    lookup32[0x6B] = std::bind(&TigerLake::ImulR32Rm32Imm8, this);
+    lookup32[0x6E] = std::bind(&TigerLake::Outsb, this);
     lookup32[0x72] = std::bind(&TigerLake::JcRel8, this);
     lookup32[0x73] = std::bind(&TigerLake::JncRel8, this);
     lookup32[0x74] = std::bind(&TigerLake::JzRel8, this);
     lookup32[0x75] = std::bind(&TigerLake::JnzRel8, this);
     lookup32[0x76] = std::bind(&TigerLake::JnaRel8, this);
     lookup32[0x77] = std::bind(&TigerLake::JaRel8, this);
-    lookup32[0x79] = std::bind(&TigerLake::JsRel8, this);
+    lookup32[0x79] = std::bind(&TigerLake::JnsRel8, this);
     lookup32[0x7C] = std::bind(&TigerLake::JlRel8, this);
     lookup32[0x7D] = std::bind(&TigerLake::JgeRel8, this);
     lookup32[0x7E] = std::bind(&TigerLake::JngRel8, this);
@@ -81,6 +93,7 @@ void TigerLake::MakeOpcodeTables()
     lookup32[0x90] = std::bind(&TigerLake::Nop, this);
     lookup32[0x9C] = std::bind(&TigerLake::Pushfq, this);
     lookup32[0xA8] = std::bind(&TigerLake::TestAlImm8, this);
+    lookup32[0xAA] = std::bind(&TigerLake::Stosb, this);
     for (int i = 0; i < 8; i++)
         lookup32[0xB0 + i] = std::bind(&TigerLake::MovR8Imm8, this);
     for (int i = 0; i < 8; i++)
@@ -90,6 +103,8 @@ void TigerLake::MakeOpcodeTables()
     lookup32[0xC3] = std::bind(&TigerLake::Ret, this);
     lookup32[0xC7] = std::bind(&TigerLake::MovRm32Imm32, this);
     lookup32[0xC9] = std::bind(&TigerLake::Leave, this);
+    lookup32[0xD1] = std::bind(&TigerLake::CodeD1_32, this);
+    lookup32[0xD3] = std::bind(&TigerLake::CodeD3_32, this);
     lookup32[0xD9] = std::bind(&TigerLake::CodeD9, this);
     lookup32[0xDB] = std::bind(&TigerLake::CodeDB, this);
     lookup32[0xE2] = std::bind(&TigerLake::LoopEcxRel8, this);
@@ -110,22 +125,26 @@ void TigerLake::MakeOpcodeTables()
     
     lookup64[0x01] = std::bind(&TigerLake::AddRm64R64, this);
     lookup64[0x03] = std::bind(&TigerLake::AddR64Rm64, this);
+    lookup64[0x05] = std::bind(&TigerLake::AddRaxImm32, this);
     lookup64[0x09] = std::bind(&TigerLake::OrRm64R64, this);
     lookup64[0x0B] = std::bind(&TigerLake::OrR64Rm64, this);
     lookup64[0x0D] = std::bind(&TigerLake::OrRaxImm32, this);
     lookup64[0x19] = std::bind(&TigerLake::SbbRm64R64, this);
     lookup64[0x21] = std::bind(&TigerLake::AndRm64R64, this);
+    lookup64[0x23] = std::bind(&TigerLake::AndR64Rm64, this);
     lookup64[0x24] = std::bind(&TigerLake::AndAlImm8, this);
     lookup64[0x25] = std::bind(&TigerLake::AndRaxImm32, this);
     lookup64[0x29] = std::bind(&TigerLake::SubRm64R64, this);
     lookup64[0x2B] = std::bind(&TigerLake::SubR64Rm64, this);
     lookup64[0x2D] = std::bind(&TigerLake::SubRaxImm32, this);
+    lookup64[0x31] = std::bind(&TigerLake::XorRm64R64, this);
     lookup64[0x39] = std::bind(&TigerLake::CmpRm64R64, this);
     lookup64[0x3B] = std::bind(&TigerLake::CmpR64Rm64, this);
     lookup64[0x3C] = std::bind(&TigerLake::CmpAlImm8, this);
     lookup64[0x3D] = std::bind(&TigerLake::CmpRaxImm32, this);
     lookup64[0x63] = std::bind(&TigerLake::MovsxdR64Rm32, this);
     lookup64[0x6A] = std::bind(&TigerLake::PushImm8, this);
+    lookup64[0x6B] = std::bind(&TigerLake::ImulR64Rm64Imm8, this);
     lookup64[0x6E] = std::bind(&TigerLake::Outsb, this);
     lookup64[0x72] = std::bind(&TigerLake::JcRel8, this);
     lookup64[0x73] = std::bind(&TigerLake::JncRel8, this);
@@ -175,21 +194,30 @@ void TigerLake::MakeOpcodeTables()
     extLookup32[0x22] = std::bind(&TigerLake::MovCRnR64, this);
     extLookup32[0x30] = std::bind(&TigerLake::Wrmsr, this);
     extLookup32[0x32] = std::bind(&TigerLake::Rdmsr, this);
+    extLookup32[0x42] = std::bind(&TigerLake::CmovcR32Rm32, this);
+    extLookup32[0x43] = std::bind(&TigerLake::CmovncR32Rm32, this);
+    extLookup32[0x44] = std::bind(&TigerLake::CmovzR32Rm32, this);
+    extLookup32[0x46] = std::bind(&TigerLake::CmovnaR32Rm32, this);
     extLookup32[0x82] = std::bind(&TigerLake::JcRel32, this);
     extLookup32[0x83] = std::bind(&TigerLake::JncRel32, this);
     extLookup32[0x84] = std::bind(&TigerLake::JzRel32, this);
     extLookup32[0x85] = std::bind(&TigerLake::JnzRel32, this);
+    extLookup32[0x86] = std::bind(&TigerLake::JnaRel32, this);
     extLookup32[0x87] = std::bind(&TigerLake::JaRel32, this);
     extLookup32[0x88] = std::bind(&TigerLake::JsRel32, this);
+    extLookup32[0x94] = std::bind(&TigerLake::SetzRm8, this);
     extLookup32[0x95] = std::bind(&TigerLake::SetneRm8, this);
     extLookup32[0x97] = std::bind(&TigerLake::SetaRm8, this);
     extLookup32[0xA2] = std::bind(&TigerLake::Cpuid, this);
     extLookup32[0xA3] = std::bind(&TigerLake::BtRm32R32, this);
     extLookup32[0xAE] = std::bind(&TigerLake::Code0FAE, this);
+    extLookup32[0xAF] = std::bind(&TigerLake::ImulR32Rm32, this);
     extLookup32[0xB6] = std::bind(&TigerLake::MovzxR32Rm8, this);
     extLookup32[0xB7] = std::bind(&TigerLake::MovzxR32Rm16, this);
     extLookup32[0xBA] = std::bind(&TigerLake::Code0FBA_32, this);
     extLookup32[0xBE] = std::bind(&TigerLake::MovzxR32Rm8, this);
+    for (int i = 0; i < 8; i++)
+        extLookup32[0xC8+i] = std::bind(&TigerLake::BswapR32, this);
     
     extLookup64[0x01] = std::bind(&TigerLake::Code0f01, this);
     extLookup64[0x1E] = std::bind(&TigerLake::HintNop, this);
@@ -203,6 +231,7 @@ void TigerLake::MakeOpcodeTables()
     extLookup64[0x20] = std::bind(&TigerLake::MovR64CRn, this);
     extLookup64[0x22] = std::bind(&TigerLake::MovCRnR64, this);
     extLookup64[0xB6] = std::bind(&TigerLake::MovzxR64Rm8, this);
+    extLookup64[0xBA] = std::bind(&TigerLake::Code0FBA_64, this);
     extLookup64[0xBE] = std::bind(&TigerLake::MovsxR64Rm8, this);
 }
 
@@ -331,6 +360,22 @@ void TigerLake::AndAlImm8()
         printf("and al, 0x%02x\n", imm8);
 }
 
+void TigerLake::CmpRm8R8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint8_t rm8 = ReadModrm8(disasm);
+    uint8_t r8 = ReadReg8((Registers)modrm.reg);
+
+    uint16_t result = (uint16_t)rm8 - (uint16_t)r8;
+
+    UpdateFlagsSub8(rm8, r8, result);
+
+    if (canDisassemble)
+        printf("cmp %s, %s\n", disasm.c_str(), GetReg8((Registers)modrm.reg));
+}
+
 void TigerLake::CmpAlImm8()
 {
     uint8_t imm8 = ReadImm8(true);
@@ -421,14 +466,14 @@ void TigerLake::JaRel8()
         rip += (int64_t)rel8;
 }
 
-void TigerLake::JsRel8()
+void TigerLake::JnsRel8()
 {
     int8_t rel8 = ReadImm8(true);
 
     if (canDisassemble)
-        printf("js 0x%08lx\n", TranslateAddr(CS, rip + (int64_t)rel8));
+        printf("jns 0x%08lx\n", TranslateAddr(CS, rip + (int64_t)rel8));
 
-    if (rflags.flag_bits.sf)
+    if (!rflags.flag_bits.sf)
         rip += (int64_t)rel8;
 }
 
@@ -558,7 +603,7 @@ void TigerLake::TestRm8R8()
     UpdateFlagsLogic8(result);
 
     if (canDisassemble)
-        printf("test %s, %s, 0x%02x, 0x%02x\n", disasm.c_str(), Reg8[modrm.reg], rm8, r8);
+        printf("test %s, %s, 0x%02x, 0x%02x\n", disasm.c_str(), GetReg8((Registers)modrm.reg), rm8, r8);
 }
 
 void TigerLake::MovRm8R8()
@@ -571,7 +616,7 @@ void TigerLake::MovRm8R8()
     WriteModrm8(disasm, r8);
 
     if (canDisassemble)
-        printf("mov %s, %s\n", disasm.c_str(), Reg8[modrm.reg]);
+        printf("mov %s, %s\n", disasm.c_str(), GetReg8((Registers)modrm.reg));
 }
 
 void TigerLake::MovR8Rm8()
@@ -584,7 +629,7 @@ void TigerLake::MovR8Rm8()
     WriteReg8((Registers)modrm.reg, rm8);
 
     if (canDisassemble)
-        printf("mov %s, %s\n", Reg8[modrm.reg], disasm.c_str());
+        printf("mov %s, %s\n", GetReg8((Registers)modrm.reg), disasm.c_str());
 }
 
 void TigerLake::MovSregRm16()
@@ -617,6 +662,31 @@ void TigerLake::TestAlImm8()
 
     if (canDisassemble)
         printf("test al, 0x%02x\n", imm8);
+}
+
+void TigerLake::Stosb()
+{
+    if (canDisassemble)
+        printf("stosb\n");
+
+    if (regs[RCX].reg64 == 0 && rep)
+    {
+        return;
+    }
+
+
+start:
+    l1->Write8(TranslateAddr(DS, regs[RDI].reg64), regs[RAX].lo);
+    
+    if (!rflags.flag_bits.df) regs[RDI].reg64 += 8;
+    else regs[RDI].reg64 -= 8;
+
+    if (rep)
+    {
+        regs[RCX].reg64--;
+        if (regs[RCX].reg64)
+            goto start;
+    }
 }
 
 void TigerLake::MovRm8Imm8()
@@ -663,6 +733,9 @@ void TigerLake::CodeF6()
     case 0x03:
         NegRm8();
         break;
+    case 0x06:
+        DivAlRm8();
+        break;
     default:
         printf("Unknown opcode 0xF6 0x%02X\n", modrm.reg);
         exit(1);
@@ -683,6 +756,26 @@ void TigerLake::TestRm8Imm8()
         printf("test %s, 0x%02x\n", disasm.c_str(), imm8);
 }
 
+void TigerLake::DivAlRm8()
+{
+    std::string disasm;
+    uint8_t rm8 = ReadModrm8(disasm);
+    uint16_t ax = regs[RAX].reg16;
+
+    uint16_t temp = regs[RAX].reg16 / rm8;
+    if (temp > 0xFF)
+    {
+        printf("#DE: Divide result to big to fit in 8-bit result!\n");
+        exit(1);
+    }
+
+    regs[RAX].lo = temp;
+    regs[RAX].hi = ax % rm8;
+
+    if (canDisassemble)
+        printf("div %s\n", disasm.c_str());
+}
+
 void TigerLake::NegRm8()
 {
     std::string disasm;
@@ -691,9 +784,9 @@ void TigerLake::NegRm8()
     if (!rm8) rflags.flag_bits.cf = 0;
     else rflags.flag_bits.cf = 1;
 
-    rm8 = -rm8;
+    uint8_t result = -rm8;
 
-    WriteModrm8(disasm, rm8);
+    WriteModrm8(disasm, result);
 
     if (canDisassemble)
         printf("neg %s\n", disasm.c_str());
@@ -711,6 +804,19 @@ void TigerLake::Cli()
     rflags.flag_bits.if_ = 0;
     if (canDisassemble)
         printf("cli\n");
+}
+
+void TigerLake::CmpAxImm16()
+{
+    uint16_t imm16 = ReadImm16(true);
+    uint16_t ax = regs[RAX].reg16;
+
+    uint32_t result = (uint32_t)ax - (uint32_t)imm16;
+
+    UpdateFlagsSub16(ax, imm16, result);
+
+    if (canDisassemble)
+        printf("cmp ax, 0x%04x\n", imm16);
 }
 
 void TigerLake::Code81_16()
@@ -740,6 +846,17 @@ void TigerLake::CmpRm16Imm16()
 
     if (canDisassemble)
         printf("cmp %s, 0x%04x\n", disasm.c_str(), imm16);
+}
+
+void TigerLake::MovRm16R16()
+{
+    FetchModrm();
+
+    std::string disasm;
+    WriteModrm16(disasm, regs[modrm.reg].reg16);
+
+    if (canDisassemble)
+        printf("mov %s, %s\n", disasm.c_str(), Reg16[modrm.reg]);
 }
 
 void TigerLake::MovR16Rm16()
@@ -863,7 +980,7 @@ void TigerLake::AddR32Rm32()
 
     UpdateFlagsAdd32(r32, rm32, result);
 
-    regs[modrm.reg].reg32 = (uint64_t)result;
+    regs[modrm.reg].reg64 = (uint32_t)result;
 
     if (canDisassemble)
         printf("add %s, %s\n", Reg32[modrm.reg], disasm.c_str());
@@ -878,7 +995,7 @@ void TigerLake::AddEaxImm32()
 
     UpdateFlagsAdd32(eax, imm32, result);
 
-    regs[RAX].reg32 = (uint32_t)result;
+    regs[RAX].reg64 = (uint32_t)result;
 
     if (canDisassemble)
         printf("add eax, 0x%08x\n", imm32);
@@ -902,15 +1019,49 @@ void TigerLake::OrRm32R32()
         printf("or %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
 }
 
+void TigerLake::OrR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t r32 = regs[modrm.reg].reg32;
+
+    uint32_t result = rm32 | r32;
+
+    UpdateFlagsLogic32(result);
+
+    regs[modrm.reg].reg64 = result;
+
+    if (canDisassemble)
+        printf("or %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::OrEaxImm32()
 {
     uint32_t imm32 = ReadImm32(true);
-    regs[RAX].reg32 |= imm32;
+    regs[RAX].reg64 = regs[RAX].reg32 | imm32;
 
     UpdateFlagsLogic32(regs[RAX].reg32);
 
     if (canDisassemble)
         printf("or eax, 0x%08x\n", imm32);
+}
+
+void TigerLake::SbbRm32R32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t r32 = regs[modrm.reg].reg32 + (uint32_t)rflags.flag_bits.cf;
+
+    uint64_t result = (uint64_t)rm32 - (uint64_t)r32;
+
+    WriteModrm32(disasm, result);
+
+    if (canDisassemble)
+        printf("sbb %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
 }
 
 void TigerLake::AndRm32R32()
@@ -931,6 +1082,24 @@ void TigerLake::AndRm32R32()
         printf("and %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
 }
 
+void TigerLake::AndR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t r32 = regs[modrm.reg].reg32;
+
+    uint32_t result = r32 & rm32;
+
+    regs[modrm.reg].reg64 = result;
+
+    UpdateFlagsLogic32(result);
+
+    if (canDisassemble)
+        printf("and %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::AndEaxImm32()
 {
     uint32_t imm32 = ReadImm32(true);
@@ -940,10 +1109,46 @@ void TigerLake::AndEaxImm32()
 
     UpdateFlagsLogic32(result);
 
-    regs[RAX].reg32 = result;
+    regs[RAX].reg64 = result;
 
     if (canDisassemble)
         printf("and eax, 0x%08x\n", imm32);
+}
+
+void TigerLake::SubRm32R32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t r32 = regs[modrm.reg].reg32;
+
+    uint64_t result = (uint64_t)rm32 - (uint64_t)r32;
+
+    UpdateFlagsSub32(rm32, r32, result);
+
+    WriteModrm32(disasm, result);
+
+    if (canDisassemble)
+        printf("sub %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
+}
+
+void TigerLake::SubR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t r32 = regs[modrm.reg].reg32;
+
+    uint64_t result = (uint64_t)r32 - (uint64_t)rm32;
+
+    UpdateFlagsSub32(rm32, r32, result);
+
+    regs[modrm.reg].reg64 = (uint32_t)result;
+
+    if (canDisassemble)
+        printf("sub %s, %s\n", Reg32[modrm.reg], disasm.c_str());
 }
 
 void TigerLake::SubEaxImm32()
@@ -955,7 +1160,7 @@ void TigerLake::SubEaxImm32()
 
     UpdateFlagsSub32(eax, imm32, result);
 
-    regs[RAX].reg32 = (uint32_t)result;
+    regs[RAX].reg64 = (uint32_t)result;
 
     if (canDisassemble)
         printf("sub eax, 0x%08x\n", imm32);
@@ -977,6 +1182,22 @@ void TigerLake::XorRm32R32()
         printf("xor %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
 }
 
+void TigerLake::XorR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+
+    uint32_t r32 = regs[modrm.reg].reg32;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint32_t result = rm32 ^ r32;
+    regs[modrm.reg].reg64 = result;
+    UpdateFlagsLogic32(result);
+
+    if (canDisassemble)
+        printf("xor %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::CmpRm32R32()
 {
     FetchModrm();
@@ -991,6 +1212,22 @@ void TigerLake::CmpRm32R32()
 
     if (canDisassemble)
         printf("cmp %s, %s\n", disasm.c_str(), Reg32[modrm.reg]);
+}
+
+void TigerLake::CmpR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t r32 = regs[modrm.reg].reg32;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = (uint64_t)r32 - (uint64_t)rm32;
+
+    UpdateFlagsSub32(r32, rm32, result);
+
+    if (canDisassemble)
+        printf("cmp %s, %s\n", Reg32[modrm.reg], disasm.c_str());
 }
 
 void TigerLake::CmpEaxImm32()
@@ -1015,7 +1252,7 @@ void TigerLake::IncR32()
 
     UpdateFlagsAdd32(regs[reg].reg32, 1, result);
 
-    regs[reg].reg32 = result;
+    regs[reg].reg64 = (uint64_t)result;
 
     if (canDisassemble)
         printf("inc %s\n", Reg32[reg]);
@@ -1030,7 +1267,7 @@ void TigerLake::DecR32()
 
     UpdateFlagsSub32(regs[reg].reg32, 1, result);
 
-    regs[reg].reg32 = result;
+    regs[reg].reg64 = (uint32_t)result;
 
     if (canDisassemble)
         printf("dec %s\n", Reg32[reg]);
@@ -1071,11 +1308,33 @@ void TigerLake::PopR32()
     }
     else
     {
-        regs[reg].reg32 = Pop32();
+        regs[reg].reg64 = Pop32();
 
         if (canDisassemble)
             printf("pop %s\n", Reg32[reg]);
     }
+}
+
+void TigerLake::ImulR32Rm32Imm8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    int8_t imm8 = ReadImm8(true);
+    int32_t rm32 = ReadModrm32(disasm);
+
+    int64_t x = (int64_t)rm32;
+    int64_t y = (int64_t)imm8;
+
+    int64_t z = (int128_t)x * y;
+    int o = z != (int32_t)z;
+    rflags.flag_bits.cf = o;
+    rflags.flag_bits.of = o;
+    
+    regs[modrm.reg].reg64 = (uint32_t)z;
+
+    if (canDisassemble)
+        printf("imul %s, %s, 0x%02x\n", Reg32[modrm.reg], disasm.c_str(), imm8);
 }
 
 void TigerLake::Outsb()
@@ -1323,7 +1582,7 @@ void TigerLake::MovR32Rm32()
     std::string disasm;
     uint32_t rm32 = ReadModrm32(disasm);
 
-    regs[modrm.reg].reg32 = rm32;
+    regs[modrm.reg].reg64 = rm32;
 
     if (canDisassemble)
         printf("mov %s, %s\n", Reg32[modrm.reg], disasm.c_str());
@@ -1334,7 +1593,7 @@ void TigerLake::LeaR32M()
     FetchModrm();
 
     std::string disasm;
-    regs[modrm.reg].reg32 = (DecodeModrmAddr(disasm) & 0xFFFFFFFF);
+    regs[modrm.reg].reg64 = (DecodeModrmAddr(disasm) & 0xFFFFFFFF);
 
     if (canDisassemble)
         printf("lea %s, %s\n", Reg32[modrm.reg], disasm.c_str());
@@ -1364,7 +1623,7 @@ void TigerLake::MovR8Imm8()
     WriteReg8((Registers)reg, imm8);
 
     if (canDisassemble)
-        printf("mov %s, 0x%02x\n", Reg8[reg], imm8);
+        printf("mov %s, 0x%02x\n", GetReg8((Registers)reg), imm8);
 }
 
 void TigerLake::MovR32Imm32()
@@ -1388,6 +1647,9 @@ void TigerLake::CodeC1_32()
     {
     case 0x04:
         ShlRm32Imm8();
+        break;
+    case 0x05:
+        ShrRm32Imm8();
         break;
     default:
         printf("Unknown 32-bit opcode 0xC1 0x%02x\n", modrm.reg);
@@ -1414,6 +1676,27 @@ void TigerLake::ShlRm32Imm8()
     
     if (canDisassemble)
         printf("shl %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
+void TigerLake::ShrRm32Imm8()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint8_t imm8 = ReadImm8(true) & 0x1F;
+
+    uint64_t result = rm32 >> imm8;
+    WriteModrm32(disasm, result);
+
+    rflags.flag_bits.cf = ((rm32 << (imm8-1)) & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 31) & 1;
+
+    if (imm8 == 1)
+        rflags.flag_bits.of = ((rm32 >> 31) & 1) ^ ((rm32 >> 30) & 1);
+    
+    if (canDisassemble)
+        printf("shr %s, 0x%02x\n", disasm.c_str(), imm8);
 }
 
 void TigerLake::Ret()
@@ -1443,10 +1726,126 @@ void TigerLake::Leave()
     if (mode == Mode::LongMode)
         regs[RBP].reg64 = Pop64();
     else
-        regs[RBP].reg32 = Pop32();
+        regs[RBP].reg64 = Pop32();
     
     if (canDisassemble)
         printf("leave\n");
+}
+
+void TigerLake::CodeD1_32()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x04:
+        ShlRm321();
+        break;
+    case 0x05:
+        ShrRm321();
+        break;
+    default:
+        printf("Unknown opcode 0xD1 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void TigerLake::ShlRm321()
+{   
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = rm32 << 1;
+    WriteModrm32(disasm, result);
+
+    rflags.flag_bits.cf = ((rm32 >> (31)) & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 31) & 1;
+
+    rflags.flag_bits.of = ((rm32 >> 31) & 1) ^ ((rm32 >> 30) & 1);
+    
+    if (canDisassemble)
+        printf("shl %s, 1\n", disasm.c_str());
+}
+
+void TigerLake::ShrRm321()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = rm32 >> 1;
+    WriteModrm32(disasm, result);
+
+    rflags.flag_bits.cf = (rm32 & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 31) & 1;
+
+    rflags.flag_bits.of = ((rm32 >> 31) & 1) ^ ((rm32 >> 30) & 1);
+    
+    if (canDisassemble)
+        printf("shr %s, 1\n", disasm.c_str());
+}
+
+void TigerLake::CodeD3_32()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x04:
+        ShlRm32Cl();
+        break;
+    case 0x05:
+        ShrRm32Cl();
+        break;
+    default:
+        printf("Unknown opcode 0xD3 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void TigerLake::ShlRm32Cl()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+    uint8_t cl = regs[RCX].lo & 0x1F;
+
+    uint64_t result = rm32 << cl;
+    WriteModrm32(disasm, result);
+
+    rflags.flag_bits.cf = ((rm32 >> (32-cl)) & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 31) & 1;
+
+    if (cl == 1)
+        rflags.flag_bits.of = ((rm32 >> 31) & 1) ^ ((rm32 >> 30) & 1);
+    
+    if (canDisassemble)
+        printf("shl %s, cl\n", disasm.c_str());
+}
+
+void TigerLake::ShrRm32Cl()
+{
+    std::string disasm;
+    uint8_t cl = regs[RCX].lo & 0x1F;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = rm32 >> cl;
+    WriteModrm32(disasm, result);
+
+    rflags.flag_bits.cf = ((rm32 << (cl-1)) & 1);
+    rflags.flag_bits.pf = CalcPF(result);
+    rflags.flag_bits.zf = !(result);
+    rflags.flag_bits.sf = (result >> 31) & 1;
+
+    if (cl == 1)
+        rflags.flag_bits.of = ((rm32 >> 31) & 1) ^ ((rm32 >> 30) & 1);
+    
+    if (canDisassemble)
+        printf("shr %s, cl\n", disasm.c_str());
 }
 
 void TigerLake::CodeD9()
@@ -1535,6 +1934,9 @@ void TigerLake::CallRel32()
 
     rip += (int64_t)rel32;
 
+    if (rip == 0xfffcc390)
+        exit(1);
+
     if (canDisassemble)
         printf("call 0x%08lx\n", TranslateAddr(CS, rip));
 }
@@ -1597,6 +1999,9 @@ void TigerLake::CodeF7_32()
     case 0x01:
         TestRm32Imm32();
         break;
+    case 0x02:
+        NotRm32();
+        break;
     default:
         printf("Unknown 32-bit opcode 0xF7 0x%02X\n", modrm.reg);
         exit(1);
@@ -1617,12 +2022,31 @@ void TigerLake::TestRm32Imm32()
         printf("test %s, 0x%08x\n", disasm.c_str(), imm32);
 }
 
+void TigerLake::NotRm32()
+{
+    std::string disasm;
+
+    WriteModrm32(disasm, ~ReadModrm32(disasm));
+
+    if (canDisassemble)
+        printf("not %s\n", disasm.c_str());
+}
+
 void TigerLake::CodeFF_32()
 {
     FetchModrm();
 
     switch (modrm.reg)
     {
+    case 0x00:
+        IncRm32();
+        break;
+    case 0x01:
+        DecRm32();
+        break;
+    case 0x02:
+        CallRm32();
+        break;
     case 0x04:
         JmpRm32();
         break;
@@ -1630,6 +2054,50 @@ void TigerLake::CodeFF_32()
         printf("Unknown opcode 0xFF 0x%02X\n", modrm.reg);
         exit(1);
     }
+}
+
+void TigerLake::IncRm32()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = (uint64_t)rm32 + 1UL;
+
+    UpdateFlagsAdd32(rm32, 1, result);
+
+    WriteModrm32(disasm, result);
+
+    if (canDisassemble)
+        printf("inc %s\n", disasm.c_str());
+}
+
+void TigerLake::DecRm32()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    uint64_t result = (uint64_t)rm32 - 1UL;
+
+    UpdateFlagsSub32(rm32, 1, result);
+
+    WriteModrm32(disasm, result);
+
+    if (canDisassemble)
+        printf("dec %s\n", disasm.c_str());
+}
+
+void TigerLake::CallRm32()
+{
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    if (mode == Mode::LongMode) Push64(rip);
+    else Push32(rip);
+
+    rip = rm32;
+
+    if (canDisassemble)
+        printf("call %s\n", disasm.c_str());
 }
 
 void TigerLake::JmpRm32()
@@ -1677,6 +2145,21 @@ void TigerLake::AddR64Rm64()
 
     if (canDisassemble)
         printf("add %s, %s\n", Reg64[modrm.reg], disasm.c_str());
+}
+
+void TigerLake::AddRaxImm32()
+{
+    uint64_t imm64 = (int64_t)(int32_t)ReadImm32(true);
+    uint64_t rax = regs[RAX].reg64;
+
+    uint64_t result = rax + imm64;
+
+    UpdateFlagsAdd64(rax, imm64, result);
+
+    regs[RAX].reg64 = result;
+
+    if (canDisassemble)
+        printf("add rax, 0x%08lx\n", imm64);
 }
 
 void TigerLake::OrR64Rm64()
@@ -1763,6 +2246,24 @@ void TigerLake::AndRm64R64()
         printf("and %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
 }
 
+void TigerLake::AndR64Rm64()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint64_t rm64 = ReadModrm64(disasm);
+    uint64_t r64 = regs[modrm.reg].reg64;
+
+    uint64_t result = rm64 & r64;
+
+    UpdateFlagsLogic64(result);
+
+    regs[modrm.reg].reg64 = result;
+
+    if (canDisassemble)
+        printf("and %s, %s\n", Reg64[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::SubRm64R64()
 {
     FetchModrm();
@@ -1795,6 +2296,24 @@ void TigerLake::SubRaxImm32()
         printf("sub rax, 0x%08lx\n", imm32);
 }
 
+void TigerLake::XorRm64R64()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint64_t rm64 = ReadModrm64(disasm);
+    uint64_t r64 = regs[modrm.reg].reg64;
+
+    uint64_t result = rm64 ^ r64;
+
+    UpdateFlagsLogic64(result);
+
+    WriteModrm64(disasm, result);
+
+    if (canDisassemble)
+        printf("xor %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
+}
+
 void TigerLake::SubR64Rm64()
 {
     FetchModrm();
@@ -1806,7 +2325,7 @@ void TigerLake::SubR64Rm64()
 
     UpdateFlagsSub64(r64, rm64, r64 - rm64);
 
-    WriteModrm64(disasm, r64 - rm64);
+    regs[modrm.reg].reg64 = r64 - rm64;
 
     if (canDisassemble)
         printf("sub %s, %s\n", Reg64[modrm.reg], disasm.c_str());
@@ -1824,7 +2343,7 @@ void TigerLake::CmpRm64R64()
     UpdateFlagsSub64(rm64, r64, rm64 - r64);
 
     if (canDisassemble)
-        printf("cmp %s, %s\n", disasm.c_str(), Reg64[modrm.reg]);
+        printf("cmp %s, %s (0x%08lx, 0x%08lx, 0x%08lx)\n", disasm.c_str(), Reg64[modrm.reg], rm64 - r64, rm64, r64);
 }
 
 void TigerLake::CmpR64Rm64()
@@ -1875,7 +2394,29 @@ void TigerLake::MovsxdR64Rm32()
     regs[modrm.reg].reg64 = rm32;
 
     if (canDisassemble)
-        printf("movsxd %s, %s\n", Reg64[modrm.reg], disasm.c_str());
+        printf("movsxd %s, %s (0x%08lx)\n", Reg64[modrm.reg], disasm.c_str(), rm32);
+}
+
+void TigerLake::ImulR64Rm64Imm8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint8_t imm8 = ReadImm8(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    int64_t x = (int64_t)rm64;
+    int64_t y = (int64_t)imm8;
+
+    int128_t z = (int128_t)x * y;
+    int o = z != (int64_t)z;
+    rflags.flag_bits.cf = o;
+    rflags.flag_bits.of = o;
+    
+    regs[modrm.reg].reg64 = (uint64_t)z;
+
+    if (canDisassemble)
+        printf("imul %s, %s, 0x%02x\n", Reg64[modrm.reg], disasm.c_str(), imm8);
 }
 
 void TigerLake::Code81_64()
@@ -2151,9 +2692,17 @@ void TigerLake::Pushfq()
 
 void TigerLake::Stosq()
 {
+    if (canDisassemble)
+        printf("stosq\n");
+    
+    if (regs[RCX].reg64 == 0 && rep)
+        return;
+
 start:
     l1->Write64(TranslateAddr(DS, regs[RDI].reg64), regs[RAX].reg64);
-    regs[RDI].reg64 += 8;
+    
+    if (!rflags.flag_bits.df) regs[RDI].reg64 += 8;
+    else regs[RDI].reg64 -= 8;
 
     if (rep)
     {
@@ -2161,9 +2710,6 @@ start:
         if (regs[RCX].reg64)
             goto start;
     }
-
-    if (canDisassemble)
-        printf("stosq\n");
 }
 
 void TigerLake::MovR64Imm64()
@@ -2181,7 +2727,7 @@ void TigerLake::MovR64Imm64()
 
 void TigerLake::CodeC1_64()
 {
-    FetchModrm64();
+    FetchModrm();
 
     switch (modrm.reg)
     {
@@ -2241,7 +2787,7 @@ void TigerLake::ShrRm64Imm8()
 
 void TigerLake::MovRm64Imm32()
 {
-    FetchModrm64();
+    FetchModrm();
 
     uint64_t imm32 = (int64_t)(int32_t)ReadImm32(true);
 
@@ -2278,9 +2824,9 @@ void TigerLake::NegRm64()
     if (!rm64) rflags.flag_bits.cf = 0;
     else rflags.flag_bits.cf = 1;
 
-    rm64 = -rm64;
+    uint64_t result = -rm64;
 
-    WriteModrm64(disasm, rm64);
+    WriteModrm64(disasm, result);
 
     if (canDisassemble)
         printf("neg %s\n", disasm.c_str());
@@ -2320,6 +2866,9 @@ void TigerLake::CodeFF_64()
     case 0x01:
         DecRm64();
         break;
+    case 0x02:
+        CallRm64();
+        break;
     default:
         printf("Unknown 64-bit opcode 0xFF 0x%02X\n", modrm.reg);
         exit(1);
@@ -2352,6 +2901,19 @@ void TigerLake::DecRm64()
 
     if (canDisassemble)
         printf("dec %s\n", disasm.c_str());
+}
+
+void TigerLake::CallRm64()
+{
+    std::string disasm;
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    Push64(rip);
+
+    rip = rm64;
+
+    if (canDisassemble)
+        printf("call %s\n", disasm.c_str());
 }
 
 void TigerLake::Code0f01()
@@ -2495,8 +3057,8 @@ void TigerLake::Rdmsr()
         exit(1);
     }
 
-    regs[RAX].reg32 = val & 0xffffffff;
-    regs[RDX].reg32 = (val >> 32);
+    regs[RAX].reg64 = val & 0xffffffff;
+    regs[RDX].reg64 = (val >> 32);
 
     if (canDisassemble)
         printf("rdmsr\n");
@@ -2511,6 +3073,21 @@ void TigerLake::JnzRel32()
 
     if (!rflags.flag_bits.zf)
         rip += (int64_t)rel32;
+}
+
+void TigerLake::SetzRm8()
+{
+    FetchModrm();
+
+    std::string disasm;
+    
+    if (rflags.flag_bits.zf)
+        WriteModrm8(disasm, 1);
+    else
+        WriteModrm8(disasm, 0);
+    
+    if (canDisassemble)
+        printf("setz %s\n", disasm.c_str());
 }
 
 void TigerLake::SetneRm8()
@@ -2576,6 +3153,62 @@ void TigerLake::Cpuid()
         printf("cpuid\n");
 }
 
+void TigerLake::CmovcR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    if (rflags.flag_bits.cf)
+        regs[modrm.reg].reg64 = rm32;
+    
+    if (canDisassemble)
+        printf("cmovc %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
+void TigerLake::CmovncR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    if (!rflags.flag_bits.cf)
+        regs[modrm.reg].reg64 = rm32;
+    
+    if (canDisassemble)
+        printf("cmovnc %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
+void TigerLake::CmovzR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    if (rflags.flag_bits.zf)
+        regs[modrm.reg].reg64 = rm32;
+    
+    if (canDisassemble)
+        printf("cmovz %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
+void TigerLake::CmovnaR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    uint32_t rm32 = ReadModrm32(disasm);
+
+    if (rflags.flag_bits.cf || rflags.flag_bits.zf)
+        regs[modrm.reg].reg64 = rm32;
+    
+    if (canDisassemble)
+        printf("cmovna %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::JcRel32()
 {
     int32_t rel32 = ReadImm32(true);
@@ -2606,6 +3239,17 @@ void TigerLake::JzRel32()
         printf("jz 0x%08lx (%s)\n", TranslateAddr(CS, rip+(int64_t)rel32), rflags.flag_bits.zf ? "z" : ".");
 
     if (rflags.flag_bits.zf)
+        rip += (int64_t)rel32;
+}
+
+void TigerLake::JnaRel32()
+{
+    int32_t rel32 = ReadImm32(true);
+
+    if (canDisassemble)
+        printf("jna 0x%08lx\n", TranslateAddr(CS, rip+(int64_t)rel32));
+
+    if (rflags.flag_bits.zf || rflags.flag_bits.cf)
         rip += (int64_t)rel32;
 }
 
@@ -2657,6 +3301,33 @@ void TigerLake::Ldmxcsr()
         printf("ldmxcsr %s\n", disasm.c_str());
 }
 
+void TigerLake::ImulR32Rm32()
+{
+    FetchModrm();
+
+    std::string disasm;
+    int32_t r32 = (int32_t)regs[modrm.reg].reg32;
+    int32_t rm32 = (int32_t)ReadModrm32(disasm);
+
+    int64_t result = (int64_t)r32 * (int64_t)rm32;
+
+    regs[modrm.reg].reg32 = (uint32_t)result;
+
+    if (((int64_t)(int32_t)regs[modrm.reg].reg32) != result)
+    {
+        rflags.flag_bits.cf = 1;
+        rflags.flag_bits.of = 1;
+    }
+    else
+    {
+        rflags.flag_bits.cf = 0;
+        rflags.flag_bits.of = 0;
+    }
+
+    if (canDisassemble)
+        printf("imul %s, %s\n", Reg32[modrm.reg], disasm.c_str());
+}
+
 void TigerLake::MovzxR32Rm8()
 {
     FetchModrm();
@@ -2664,7 +3335,7 @@ void TigerLake::MovzxR32Rm8()
     std::string disasm;
     uint8_t rm8 = ReadModrm8(disasm);
 
-    regs[modrm.reg].reg32 = (uint32_t)rm8;
+    regs[modrm.reg].reg64 = (uint32_t)rm8;
 
     if (canDisassemble)
         printf("movzx %s, %s (0x%08x)\n", Reg32[modrm.reg], disasm.c_str(), rm8);
@@ -2677,7 +3348,7 @@ void TigerLake::MovzxR32Rm16()
     std::string disasm;
     uint16_t rm16 = ReadModrm16(disasm);
 
-    regs[modrm.reg].reg32 = (uint32_t)rm16;
+    regs[modrm.reg].reg64 = (uint32_t)rm16;
 
     if (canDisassemble)
         printf("movzx %s, %s\n", Reg32[modrm.reg], disasm.c_str());
@@ -2690,7 +3361,7 @@ void TigerLake::MovsxR32Rm8()
     std::string disasm;
     uint32_t rm8 = (int32_t)(int8_t)ReadModrm8(disasm);
 
-    regs[modrm.reg].reg32 = (uint32_t)rm8;
+    regs[modrm.reg].reg64 = (uint32_t)rm8;
 
     if (canDisassemble)
         printf("movsx %s, %s\n", Reg32[modrm.reg], disasm.c_str());
@@ -2740,7 +3411,16 @@ void TigerLake::BtsRm32Imm8()
         printf("bts %s, 0x%02x\n", disasm.c_str(), imm8);
 }
 
+void TigerLake::BswapR32()
+{
+    uint8_t reg = l1->Read8(TranslateAddr(CS, rip-1), false) - 0xC8;
+    if (rex.b) reg += 8;
+    
+    regs[reg].reg64 = __builtin_bswap32(regs[reg].reg32);
 
+    if (canDisassemble)
+        printf("bswap %s\n", Reg32[reg]);
+}
 
 void TigerLake::CmovcR64Rm64()
 {
@@ -2783,15 +3463,46 @@ void TigerLake::MovzxR64Rm8()
         printf("movzx %s, %s\n", Reg64[modrm.reg], disasm.c_str());
 }
 
+void TigerLake::Code0FBA_64()
+{
+    FetchModrm();
+
+    switch (modrm.reg)
+    {
+    case 0x06:
+        BtrRm64Imm8();
+        break;
+    default:
+        printf("Unknown 64-bit opcode 0x0F 0xBA 0x%02X\n", modrm.reg);
+        exit(1);
+    }
+}
+
+void TigerLake::BtrRm64Imm8()
+{
+    std::string disasm;
+    uint8_t imm8 = ReadImm8(true);
+    uint64_t rm64 = ReadModrm64(disasm);
+
+    rflags.flag_bits.cf = rm64 & (1 << imm8);
+
+    rm64 &= ~(1 << imm8);
+
+    WriteModrm64(disasm, rm64);
+
+    if (canDisassemble)
+        printf("btr %s, 0x%02x\n", disasm.c_str(), imm8);
+}
+
 void TigerLake::MovsxR64Rm8()
 {
     FetchModrm();
 
     std::string disasm;
-    uint64_t rm8 = (int64_t)(int8_t)ReadModrm8(disasm);
+    uint32_t rm8 = (int32_t)(int8_t)ReadModrm8(disasm);
 
     regs[modrm.reg].reg64 = (uint64_t)rm8;
 
     if (canDisassemble)
-        printf("movsx %s, %s\n", Reg64[modrm.reg], disasm.c_str());
+        printf("movsx %s, %s (0x%08x)\n", Reg64[modrm.reg], disasm.c_str(), rm8);
 }

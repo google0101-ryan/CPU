@@ -67,7 +67,6 @@ void IOBus::Out8(uint16_t port, uint8_t data)
 {
     if (port == 0x402)
     {
-        printf("[DebugCon]: 0x%02X\n", data);
         log << (char)data;
         log.flush();
         return;

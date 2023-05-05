@@ -32,6 +32,8 @@ namespace Bus
 void RegisterDevice(MemoryDevice* dev);
 
 uint8_t Read8(uint64_t addr);
+uint16_t Read16(uint64_t addr);
+uint32_t Read32(uint64_t addr);
 uint64_t Read64(uint64_t addr);
 
 void Write8(uint64_t addr, uint8_t data);

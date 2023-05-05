@@ -4,6 +4,9 @@
 #include <sstream>
 #include <string>
 
+typedef __int128_t int128_t;
+typedef __uint128_t uint128_t;
+
 inline std::string convert_int(int n)
 {
    std::stringstream ss;
@@ -22,6 +25,8 @@ union [[gnu::packed]] Register
         uint8_t lo;
         uint8_t hi;
     };
+    // Included to make my life easier when implementing bswap
+    uint8_t bytes[8];
 };
 
 enum Registers
@@ -55,6 +60,26 @@ inline const char* Reg8[] =
     "ch",
     "dh",
     "bh",
+    "r8b",
+    "r9b",
+    "r10b",
+    "r11b",
+    "r12b",
+    "r13b",
+    "r14b",
+    "r15b",
+};
+
+inline const char* Reg8REX[] =
+{
+    "al",
+    "cl",
+    "dl",
+    "bl",
+    "spl",
+    "bpl",
+    "sil",
+    "dil",
     "r8b",
     "r9b",
     "r10b",

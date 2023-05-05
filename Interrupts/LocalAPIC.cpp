@@ -50,6 +50,8 @@ void LocalAPIC::WriteTimerLVT(uint32_t data)
 {
     lvt_timer = data;
 
+    printf("[LAPIC] 0x%08x -> LVT\n", data);
+
     switch ((lvt_timer >> 17) & 0x3)
     {
     case 0: mode = Mode::OneShot;
@@ -62,6 +64,8 @@ void LocalAPIC::WriteTimerLVT(uint32_t data)
 
 void LocalAPIC::WriteInitialCount(uint32_t data)
 {
+    printf("[LAPIC] 0x%08x -> Initial Count\n", data);
+ 
     initial_count = data;
     current_count = data;
 }

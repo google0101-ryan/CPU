@@ -24,6 +24,30 @@ uint8_t Bus::Read8(uint64_t addr)
     exit(1);
 }
 
+uint16_t Bus::Read16(uint64_t addr)
+{
+    for (uint64_t i = 0; i < devices.size(); i++)
+    {
+        if (devices[i]->GetStart() <= addr && devices[i]->GetEnd() >= addr)
+            return devices[i]->Read16(addr);
+    }
+
+    printf("Read16 from unknown addr 0x%lx\n", addr);
+    exit(1);
+}
+
+uint32_t Bus::Read32(uint64_t addr)
+{
+    for (uint64_t i = 0; i < devices.size(); i++)
+    {
+        if (devices[i]->GetStart() <= addr && devices[i]->GetEnd() >= addr)
+            return devices[i]->Read32(addr);
+    }
+
+    printf("Read32 from unknown addr 0x%lx\n", addr);
+    exit(1);
+}
+
 uint64_t Bus::Read64(uint64_t addr)
 {
     for (uint64_t i = 0; i < devices.size(); i++)

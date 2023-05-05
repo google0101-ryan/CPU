@@ -5,6 +5,7 @@
 #include "pci/DramControllerTigerLake.h"
 #include "pci/LPCBridgeTigerLake.h" 
 #include "Interrupts/LegacyPIC.h"
+#include "cmos.h"
 
 TigerLake* cores[8];
 RAM* ram;
@@ -25,7 +26,7 @@ int main()
     ROM* rom = new ROM("OVMF.fd");
 
     // This needs to be registered last to avoid hogging other device's address space
-    ram = new RAM(1024*1024*15);
+    ram = new RAM(1024*1024*128);
 
     // PCI bus, to which most important devices are connected
     PCIBus* pci = new PCIBus();
@@ -37,6 +38,9 @@ int main()
 
     // 8259 Programmable Interrupt Controller
     LegacyPIC* pic = new LegacyPIC();
+
+    // CMOS RTC (generic)
+    CMOS* cmos = new CMOS();
 
     // An Ivy Bridge processor with 4 cores
     // All but core #0 are halted on startup, core #0 is the BSP

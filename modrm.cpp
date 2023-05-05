@@ -276,6 +276,7 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
             disasm = "[rbx+" + convert_int(disp8) + "]";
             return regs[RBX].reg64 + (int64_t)disp8;
         case 4:
+        case 12:
         {
             disasm = "[";
             uint64_t addr = DecodeSIBAddr(disasm);
@@ -288,15 +289,18 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
         case 6:
             disasm = "[rsi+" + convert_int(disp8) + "]";
             return regs[RSI].reg64 + (int64_t)disp8;
+        case 7:
+            disasm = "[rdi+" + convert_int(disp8) + "]";
+            return regs[RDI].reg64 + (int64_t)disp8;
         case 9:
-            disasm = "[r9" + convert_int(disp8) + "]";
+            disasm = "[r9+" + convert_int(disp8) + "]";
             return regs[R9].reg64 + (int64_t)disp8;
-        case 12:
-            disasm = "[r12+" + convert_int(disp8) + "]";
-            return regs[R12].reg64 + disp8;
         case 13:
             disasm = "[r13+" + convert_int(disp8) + "]";
             return regs[R13].reg64 + disp8;
+        case 14:
+            disasm = "[r14+" + convert_int(disp8) + "]";
+            return regs[R14].reg64 + (int64_t)disp8;
         case 15:
             disasm = "[r15+" + convert_int(disp8) + "]";
             return regs[R15].reg64 + (int64_t)disp8;
@@ -307,12 +311,27 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
     case 2:
         switch (modrm.rm)
         {
+        case 0:
+            disasm = "[rax+" + convert_int(disp32) + "]";
+            return regs[RAX].reg64 + (int64_t)disp32;
+        case 1:
+            disasm = "[rcx+" + convert_int(disp32) + "]";
+            return regs[RCX].reg64 + (int64_t)disp32;
+        case 2:
+            disasm = "[rdx+" + convert_int(disp32) + "]";
+            return regs[RDX].reg64 + (int64_t)disp32;
         case 3:
             disasm = "[rbx+" + convert_int(disp32) + "]";
             return regs[RBX].reg64 + (int64_t)disp32;
+        case 12:
+        case 4:
+            return DecodeSIBAddr(disasm) + disp32;
         case 5:
             disasm = "[rbp+" + convert_int(disp32) + "]";
             return regs[RBP].reg64 + (int64_t)disp32;
+        case 15:
+            disasm = "[r15+" + convert_int(disp32) + "]";
+            return regs[R15].reg64 + (int64_t)disp32;
         default:
             printf("Unhandled modr/m 64 with mod=2, rm=%d\n", modrm.rm);
             exit(1);
@@ -334,7 +353,7 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
     case 3: scale = 8; break;
     }
 
-    uint32_t res;
+    uint64_t res;
     switch (sib.index)
     {
     case 4:
@@ -345,7 +364,7 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
         break;
     }
     
-    if (sib.index != 4)
+    if (sib.index != 4 && sib.index != 12)
         disasm += (a64 ? Reg64[sib.index] : Reg32[sib.index]) + std::string("*") + std::to_string(scale) + "+";
     
     switch (sib.base)
@@ -356,8 +375,8 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
         switch (modrm.mod)
         {
         case 0: disasm += convert_int(sib_disp32); return (int64_t)sib_disp32 + res;
-        case 1: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); return disp8 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
-        case 2: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); return disp32 + (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+        case 1: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+        case 2: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
         }
         break;
     }
@@ -376,7 +395,7 @@ uint64_t TigerLake::ReadModrm64(std::string &disasm)
     }
     else
     {
-        uint32_t data = Read64(prefix, DecodeModrmAddr(disasm));
+        uint64_t data = Read64(prefix, DecodeModrmAddr(disasm));
         disasm = "qword" + disasm;
         return data;
     }
@@ -416,12 +435,12 @@ uint8_t TigerLake::ReadModrm8(std::string &disasm)
 {
     if (modrm.mod == 3)
     {
-        disasm = Reg8[modrm.rm];
+        disasm = GetReg8((Registers)modrm.rm);
         return ReadReg8((Registers)modrm.rm);
     }
     else
     {
-        uint16_t data = Read8(prefix, DecodeModrmAddr(disasm));
+        uint8_t data = Read8(prefix, DecodeModrmAddr(disasm));
         disasm = "byte" + disasm;
         return data;
     }
@@ -431,7 +450,7 @@ void TigerLake::WriteModrm8(std::string &disasm, uint8_t val)
 {
     if (modrm.mod == 3)
     {
-        disasm = Reg8[modrm.rm];
+        disasm = GetReg8((Registers)modrm.rm);
         WriteReg8((Registers)modrm.rm, val);
     }
     else
@@ -459,7 +478,7 @@ void TigerLake::WriteModrm32(std::string &disasm, uint32_t val)
 {
     if (modrm.mod == 3)
     {
-        regs[modrm.rm].reg32 = val;
+        regs[modrm.rm].reg64 = val;
         disasm = Reg32[modrm.rm];
     }
     else
@@ -510,5 +529,17 @@ uint8_t TigerLake::ReadReg8(Registers reg)
             return regs[reg].lo;
         else
             return regs[reg-4].hi;
+    }
+}
+
+const char *TigerLake::GetReg8(Registers reg)
+{
+    if (rex.r || rex.b || rex.x || rex.rex)
+    {
+        return Reg8REX[reg];
+    }
+    else
+    {
+        return Reg8[reg];
     }
 }

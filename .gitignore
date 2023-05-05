@@ -7,3 +7,5 @@ OVMF.fd
 cpuid.txt
 .vscode
 disasm
+build
+*.swp

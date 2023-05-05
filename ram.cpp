@@ -1,5 +1,6 @@
 #include "ram.h"
 #include <fstream>
+#include <cstring>
 
 RAM::RAM(size_t size)
 : MemoryDevice("Random-Access Memory (" + std::to_string(size/1024) + " KiBs)")
@@ -7,6 +8,8 @@ RAM::RAM(size_t size)
     data = new uint8_t[size];
 
     end = size;
+
+    std::memset(data, 0, size);
 
     Bus::RegisterDevice(this);
 }

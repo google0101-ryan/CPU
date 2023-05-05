@@ -4,20 +4,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include "Bus.h"
+#include "ram.h"
 
 static int coreId = 0;
 
 uint64_t TigerLake::Read64(Segments seg, uint64_t addr)
 {
-    uint64_t a1 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a2 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a3 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a4 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a5 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a6 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a7 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint64_t a8 = l1->Read8(TranslateAddr(seg, addr++), false);
-    return a1 | (a2 << 8) | (a3 << 16) | (a4 << 24) | (a5 << 32) | (a6 << 40) | (a7 << 48) | (a8 << 56);
+    return l1->Read64(TranslateAddr(seg, addr), false);
 }
 
 uint32_t TigerLake::Read32(Segments seg, uint64_t addr)
@@ -314,6 +307,8 @@ void TigerLake::Reset()
     lapic->Reset();
 }
 
+extern RAM* ram;
+
 void TigerLake::Clock()
 {
     if (halted)
@@ -389,6 +384,25 @@ void TigerLake::Clock()
             else
                 isPrefix = false;
             break;
+        case 0x42:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x43:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = true;
+                rex.b = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
         case 0x44:
             if (mode == Mode::LongMode)
             {
@@ -402,6 +416,79 @@ void TigerLake::Clock()
             if (mode == Mode::LongMode)
             {
                 rex.b = rex.r = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x46:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = rex.r = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x47:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = rex.r = rex.b = true;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x48:
+            if (mode == Mode::LongMode)
+            {
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x49:
+            if (mode == Mode::LongMode)
+            {
+                rex.b = true;
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x4A:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = true;
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
+                opcode = ReadImm8(true);
+            }
+            else
+                isPrefix = false;
+            break;
+        case 0x4B:
+            if (mode == Mode::LongMode)
+            {
+                rex.x = rex.b = true;
+                is64 = true;
+                if (table == &extLookup32)
+                    table = &extLookup64;
+                else
+                    table = &lookup64;
                 opcode = ReadImm8(true);
             }
             else
@@ -437,9 +524,11 @@ void TigerLake::Clock()
             else
                 isPrefix = false;
             break;
-        case 0x48:
+        case 0x4E:
             if (mode == Mode::LongMode)
             {
+                rex.r = true;
+                rex.x = true;
                 is64 = true;
                 if (table == &extLookup32)
                     table = &extLookup64;
@@ -450,10 +539,12 @@ void TigerLake::Clock()
             else
                 isPrefix = false;
             break;
-        case 0x49:
+        case 0x4F:
             if (mode == Mode::LongMode)
             {
+                rex.r = true;
                 rex.b = true;
+                rex.x = true;
                 is64 = true;
                 if (table == &extLookup32)
                     table = &extLookup64;
@@ -525,6 +616,8 @@ void TigerLake::Clock()
     (*table)[opcode]();
 
     lapic->TickTimer();
+
+    // Dump();
 }
 
 void TigerLake::Dump()
