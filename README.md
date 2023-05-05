@@ -18,10 +18,13 @@ Get OVMF actually working
 # FAQ
 
 <b>Q: Will there be a Windows port?</b>
+
 A: no
 
 <b>Q: Why not?</b>
+
 A: Because Windows is difficult to develop for, and it adds a level of difficulty to an already difficult project that I do not need
 
-<b>Q: Will it run (software)?</b>
+<b>Q: Will it run (insert software name here)?</b>
+
 A: No.
