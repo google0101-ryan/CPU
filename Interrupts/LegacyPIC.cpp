@@ -9,7 +9,7 @@ LegacyPIC::LegacyPIC()
     IOBus::RegisterDevice(this, 0xA0, 0xA1);
 }
 
-uint8_t LegacyPIC::Read8(uint16_t port)
+uint8_t LegacyPIC::In8(uint16_t port)
 {
     switch (port)
     {
@@ -19,7 +19,7 @@ uint8_t LegacyPIC::Read8(uint16_t port)
     }
 }
 
-void LegacyPIC::Write8(uint16_t port, uint8_t data)
+void LegacyPIC::Out8(uint16_t port, uint8_t data)
 {
     switch (port)
     {

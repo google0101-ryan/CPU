@@ -117,6 +117,13 @@ void TigerLake::FetchModrm32()
         }
         disp8 = ReadImm8(true);
         break;
+    case 2:
+        if (modrm.rm == 4)
+        {
+            FetchSib32();
+        }
+        disp32 = ReadImm32(true);
+        break;
     case 3:
         break;
     default:
@@ -165,7 +172,7 @@ uint64_t TigerLake::DecodeModrmAddr16(std::string &disasm)
             disasm += "di]";
             return regs[RSI].reg16;
         case 6:
-            disasm += "0x" + convert_int(disp16);
+            disasm += convert_int(disp16) + "]";
             return (uint64_t)disp16;
         case 7:
             disasm += "bx]";
@@ -191,6 +198,12 @@ uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
         case 0:
             disasm += "eax]";
             return a64 ? regs[RAX].reg64 : regs[RAX].reg32;
+        case 1:
+            disasm += "ecx]";
+            return a64 ? regs[RCX].reg64 : regs[RCX].reg32;
+        case 2:
+            disasm += "edx]";
+            return a64 ? regs[RDX].reg64 : regs[RDX].reg32;
         case 3:
             disasm += "ebx]";
             return a64 ? regs[RBX].reg64 : regs[RBX].reg32;
@@ -201,8 +214,14 @@ uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
             return addr;
         }
         case 5:
-            disasm += convert_int(disp32) + "]";
-            return disp32;
+            disasm += convert_int((uint32_t)disp32) + "]";
+            return (uint32_t)disp32;
+        case 6:
+            disasm += "esi]";
+            return a64 ? regs[RSI].reg64 : regs[RSI].reg32;
+        case 7:
+            disasm += "edi]";
+            return a64 ? regs[RDI].reg64 : regs[RDI].reg32;
         default:
             printf("Unhandled modr/m 32 with mod=0, rm=%d\n", modrm.rm);
             exit(1);
@@ -220,14 +239,51 @@ uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
         case 1:
             disasm += "ecx + " + convert_int(disp8) + "]";
             return (a64 ? regs[RCX].reg64 : regs[RCX].reg32) + (int64_t)disp8;
+        case 2:
+            disasm += "edx + " + convert_int(disp8) + "]";
+            return (a64 ? regs[RDX].reg64 : regs[RDX].reg32) + (int64_t)disp8;
         case 3:
             disasm += "ebx + " + convert_int(disp8) + "]";
             return (a64 ? regs[RBX].reg64 : regs[RBX].reg32) + (int64_t)disp8;
+        case 4:
+        {
+            uint64_t addr = DecodeSIBAddr(disasm) + (int64_t)disp8;
+            disasm += "+" + convert_int(disp8) + "]";
+            return addr;
+        }
         case 5:
             disasm += "ebp + " + convert_int(disp8) + "]";
             return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + (int64_t)disp8;
+        case 6:
+            disasm += "esi + " + convert_int(disp8) + "]";
+            return (a64 ? regs[RSI].reg64 : regs[RSI].reg32) + (int64_t)disp8;
+        case 7:
+            disasm += "edi + " + convert_int(disp8) + "]";
+            return (a64 ? regs[RDI].reg64 : regs[RDI].reg32) + (int64_t)disp8;
         default:
             printf("Unhandled modr/m 32 with mod=1, rm=%d\n", modrm.rm);
+            exit(1);
+        }
+    case 2:
+        disasm = "[";
+        if (prefix != Segments::DS)
+            disasm += Segs[prefix] + std::string(":");
+        switch (modrm.rm)
+        {
+        case 1:
+            disasm += "ecx + " + convert_int(disp32) + "]";
+            return (a64 ? regs[RCX].reg64 : regs[RCX].reg32) + (int64_t)disp32;
+        case 2:
+            disasm += "edx + " + convert_int(disp32) + "]";
+            return (a64 ? regs[RDX].reg64 : regs[RDX].reg32) + (int64_t)disp32;
+        case 3:
+            disasm += "ebx + " + convert_int(disp32) + "]";
+            return (a64 ? regs[RBX].reg64 : regs[RBX].reg32) + (int64_t)disp32;
+        case 7:
+            disasm += "edi + " + convert_int(disp32) + "]";
+            return (a64 ? regs[RDI].reg64 : regs[RDI].reg32) + (int64_t)disp32;
+        default:
+            printf("Unhandled modr/m 32 with mod=2, rm=%d\n", modrm.rm);
             exit(1);
         }
         break;
@@ -244,8 +300,8 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
     case 0:
         switch (modrm.rm)
         {
-        case 12:
         case 4:
+        case 12:
         {
             disasm = "[";
             uint64_t addr = DecodeSIBAddr(disasm);
@@ -267,7 +323,7 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
             disasm = "[rax+" + convert_int(disp8) + "]";
             return regs[RAX].reg64 + (int64_t)disp8;
         case 1:
-            disasm = "[rcx+" + convert_int(disp8) + "]";
+            disasm = "[rcx+" + convert_int(disp8) + "] (" + convert_int(regs[RCX].reg64 + (int64_t)disp8) + ")";
             return regs[RCX].reg64 + (int64_t)disp8;
         case 2:
             disasm = "[rdx+" + convert_int(disp8) + "]";
@@ -292,9 +348,15 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
         case 7:
             disasm = "[rdi+" + convert_int(disp8) + "]";
             return regs[RDI].reg64 + (int64_t)disp8;
+        case 8:
+            disasm = "[r8+" + convert_int(disp8) + "]";
+            return regs[R8].reg64 + (int64_t)disp8;
         case 9:
             disasm = "[r9+" + convert_int(disp8) + "]";
             return regs[R9].reg64 + (int64_t)disp8;
+        case 10:
+            disasm = "[r10+" + convert_int(disp8) + "]";
+            return regs[R10].reg64 + (int64_t)disp8;
         case 13:
             disasm = "[r13+" + convert_int(disp8) + "]";
             return regs[R13].reg64 + disp8;
@@ -323,9 +385,14 @@ uint64_t TigerLake::DecodeModrmAddr64(std::string &disasm)
         case 3:
             disasm = "[rbx+" + convert_int(disp32) + "]";
             return regs[RBX].reg64 + (int64_t)disp32;
-        case 12:
         case 4:
-            return DecodeSIBAddr(disasm) + disp32;
+        case 12:
+        {
+            disasm = "[";
+            uint64_t addr = DecodeSIBAddr(disasm) + disp32;
+            disasm += "+" + convert_int(disp32) + "]";
+            return addr;
+        }
         case 5:
             disasm = "[rbp+" + convert_int(disp32) + "]";
             return regs[RBP].reg64 + (int64_t)disp32;
@@ -357,7 +424,6 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
     switch (sib.index)
     {
     case 4:
-    case 12: 
         res = 0; break;
     default:
         res = (a64 ? regs[sib.index].reg64 : regs[sib.index].reg32) * scale;
@@ -375,14 +441,53 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
         switch (modrm.mod)
         {
         case 0: disasm += convert_int(sib_disp32); return (int64_t)sib_disp32 + res;
-        case 1: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
-        case 2: disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+        case 1:
+        {
+            if (!rex.b)
+            {
+                disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp8); 
+                return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+            }
+            else
+            {
+                disasm += "r13" + convert_int(disp8); 
+                return regs[R13].reg64 + res;
+            }
+        }
+        case 2:
+        {
+            if (!rex.b)
+            {
+                disasm += (a64 ? "r" : "e") + std::string("bp+") + convert_int(disp32); 
+                return (a64 ? regs[RBP].reg64 : regs[RBP].reg32) + res;
+            }
+            else
+            {
+                disasm += "r13" + convert_int(disp32); 
+                return regs[R13].reg64 + res;
+            }
+        }
         }
         break;
     }
     default:
         disasm += a64 ? Reg64[sib.base] : Reg32[sib.base];
         return (a64 ? regs[sib.base].reg64 : regs[sib.base].reg32) + res;
+    }
+}
+
+uint64_t TigerLake::ReadModrmMMX(std::string &disasm)
+{
+    if (modrm.mod == 3)
+    {
+        disasm = MMX[modrm.rm];
+        return mmx[modrm.rm].reg64;
+    }
+    else
+    {
+        uint64_t data = Read64(prefix, DecodeModrmAddr(disasm));
+        disasm = "qword" + disasm;
+        return data;
     }
 }
 
@@ -455,7 +560,7 @@ void TigerLake::WriteModrm8(std::string &disasm, uint8_t val)
     }
     else
     {
-        l1->Write8(DecodeModrmAddr(disasm), val);
+        Write8(prefix, DecodeModrmAddr(disasm), val);
         disasm = "byte" + disasm;
     }
 }
@@ -469,7 +574,7 @@ void TigerLake::WriteModrm16(std::string &disasm, uint16_t val)
     }
     else
     {
-        l1->Write16(DecodeModrmAddr(disasm), val);
+        Write16(prefix, DecodeModrmAddr(disasm), val);
         disasm = "word" + disasm;
     }
 }
@@ -493,6 +598,20 @@ void TigerLake::WriteModrm64(std::string &disasm, uint64_t val)
     if (modrm.mod == 3)
     {
         regs[modrm.rm].reg64 = val;
+        disasm = Reg64[modrm.rm];
+    }
+    else
+    {
+        l1->Write64(DecodeModrmAddr(disasm), val);
+        disasm = "qword" + disasm;
+    }
+}
+
+void TigerLake::WriteModrmMMX(std::string &disasm, uint64_t val)
+{
+    if (modrm.mod == 3)
+    {
+        mmx[modrm.rm].reg64 = val;
         disasm = Reg64[modrm.rm];
     }
     else

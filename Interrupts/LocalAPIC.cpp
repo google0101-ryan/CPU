@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <assert.h>
 
 LocalAPIC::LocalAPIC()
 {
@@ -60,6 +61,22 @@ void LocalAPIC::WriteTimerLVT(uint32_t data)
     }
 
     current_count = initial_count;
+}
+
+void LocalAPIC::WriteICR0(uint32_t data)
+{
+    icr0.data = data;
+
+    if (data == 0xc4500)
+    {
+        icr0.delivery_stat = 0; // Interrupt went through successfully
+        return; // INIT IPI, used to put processors into a WAIT_FOR_SIPI state
+    }
+
+    assert(icr0.dest_mode == 0b110);
+
+    printf("Unhandled ICR0 write 0x%08x\n", data);
+    exit(1);
 }
 
 void LocalAPIC::WriteInitialCount(uint32_t data)

@@ -7,7 +7,7 @@
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 
-inline std::string convert_int(int n)
+inline std::string convert_int(uint64_t n)
 {
    std::stringstream ss;
 
@@ -27,6 +27,17 @@ union [[gnu::packed]] Register
     };
     // Included to make my life easier when implementing bswap
     uint8_t bytes[8];
+};
+
+union [[gnu::packed]] SseRegister
+{
+    uint128_t reg128;
+    uint64_t reg64[2];
+    uint32_t reg32[4];
+    float f[4];
+    double d[2];
+    uint16_t reg16[8];
+    uint8_t reg8[16];
 };
 
 enum Registers
@@ -148,6 +159,38 @@ inline const char* Reg64[] =
     "r13",
     "r14",
     "r15",
+};
+
+inline const char* MMX[] =
+{
+    "mm0",
+    "mm1",
+    "mm2",
+    "mm3",
+    "mm4",
+    "mm5",
+    "mm6",
+    "mm7",
+};
+
+inline const char* SSE[] =
+{
+    "xmm0",
+    "xmm1",
+    "xmm2",
+    "xmm3",
+    "xmm4",
+    "xmm5",
+    "xmm6",
+    "xmm7",
+    "xmm8",
+    "xmm9",
+    "xmm10",
+    "xmm11",
+    "xmm12",
+    "xmm13",
+    "xmm14",
+    "xmm15",
 };
 
 struct Segment

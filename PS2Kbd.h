@@ -3,15 +3,12 @@
 #include <IOBus.h>
 #include <cassert>
 
-class CMOS : public IODevice
+class PS2Kbd : public IODevice
 {
 private:
-    uint8_t reset_reason = 0;
-    uint8_t selected_port = 0x00;
-
-    bool nmi_disabled = true;
+    uint8_t control_a;
 public:
-    CMOS();
+    PS2Kbd();
 
     virtual uint32_t In32(uint16_t port) {assert(0);}
     virtual uint16_t In16(uint16_t port) {assert(0);}

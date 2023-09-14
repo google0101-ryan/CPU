@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <cinttypes>
 #include "Bus.h"
 #include "ram.h"
 
@@ -10,17 +11,22 @@ static int coreId = 0;
 
 uint64_t TigerLake::Read64(Segments seg, uint64_t addr)
 {
-    return l1->Read64(TranslateAddr(seg, addr), false);
+    return Bus::Read64(TranslateAddr(seg, addr));
 }
 
 uint32_t TigerLake::Read32(Segments seg, uint64_t addr)
 {
+    if (mode != Mode::LongMode)
+        addr &= 0xffffffff;
+
     if (addr >= 0xfee00000 && addr <= 0xfee003f0)
     {
         switch (addr-0xfee00000)
         {
         case 0xf0:
             return lapic->ReadSpuriousVec();
+        case 0x300:
+            return lapic->ReadICR0();
         case 0x320:
             return lapic->ReadTimerLVT();
         default:
@@ -29,23 +35,19 @@ uint32_t TigerLake::Read32(Segments seg, uint64_t addr)
         }
     }
 
-    uint8_t lo1 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint8_t lo2 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint8_t hi1 = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint8_t hi2 = l1->Read8(TranslateAddr(seg, addr++), false);
-    return lo1 | (lo2 << 8) | (hi1 << 16) | (hi2 << 24);
+    return Bus::Read32(TranslateAddr(seg, addr));
 }
 
 uint16_t TigerLake::Read16(Segments seg, uint64_t addr)
 {
-    uint8_t lo = l1->Read8(TranslateAddr(seg, addr++), false);
-    uint8_t hi = l1->Read8(TranslateAddr(seg, addr++), false);
-    return lo | (hi << 8);
+    if (mode != Mode::LongMode)
+        addr &= 0xffffffff;
+    return Bus::Read16(TranslateAddr(seg, addr));
 }
 
 uint8_t TigerLake::Read8(Segments seg, uint64_t addr)
 {
-    return l1->Read8(TranslateAddr(seg, addr), false);
+    return Bus::Read8(TranslateAddr(seg, addr));
 }
 
 void TigerLake::Write32(Segments seg, uint64_t addr, uint32_t val)
@@ -56,6 +58,9 @@ void TigerLake::Write32(Segments seg, uint64_t addr, uint32_t val)
         {
         case 0xf0:
             lapic->WriteSpuriousVec(val);
+            break;
+        case 0x300:
+            lapic->WriteICR0(val);
             break;
         case 0x320:
             lapic->WriteTimerLVT(val);
@@ -70,13 +75,23 @@ void TigerLake::Write32(Segments seg, uint64_t addr, uint32_t val)
         return;
     }
 
-    l1->Write32(addr, val);
+    Bus::Write32(addr, val);
+}
+
+void TigerLake::Write16(Segments seg, uint64_t addr, uint16_t val)
+{
+    Bus::Write16(TranslateAddr(seg, addr), val);
+}
+
+void TigerLake::Write8(Segments seg, uint64_t addr, uint8_t val)
+{
+    Bus::Write8(TranslateAddr(seg, addr), val);
 }
 
 void TigerLake::Push8(uint8_t val)
 {
     regs[RSP].reg64--;
-    l1->Write8(TranslateAddr(SS, regs[RSP].reg64), val);
+    Bus::Write8(TranslateAddr(SS, regs[RSP].reg64), val);
 }
 
 void TigerLake::Push32(uint32_t val)
@@ -179,30 +194,28 @@ uint64_t TigerLake::TranslateAddr(Segments seg, uint64_t addr)
 
 uint8_t TigerLake::ReadImm8(bool is_instr)
 {
-    return l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
+    return Read8(CS, rip++);
 }
 
 uint16_t TigerLake::ReadImm16(bool is_instr)
 {
-    uint8_t lo = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    uint8_t hi = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    return lo | (hi << 8);
+    uint16_t data = Read16(CS, rip);
+    rip += 2;
+    return data;
 }
 
 uint32_t TigerLake::ReadImm32(bool is_instr)
 {
-    uint8_t lo1 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    uint8_t lo2 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    uint8_t hi1 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    uint8_t hi2 = l1->Read8(TranslateAddr(is_instr ? CS : prefix, rip++), is_instr);
-    return lo1 | (lo2 << 8) | (hi1 << 16) | (hi2 << 24);
+    uint32_t data = Read32(CS, rip);
+    rip += 4;
+    return data;
 }
 
 uint64_t TigerLake::ReadImm64(bool is_instr)
 {
-    uint64_t low = ReadImm32(true);
-    uint64_t high = ReadImm32(true);
-    return (high << 32) | low;
+    uint64_t data = Read64(CS, rip);
+    rip += 8;
+    return data;
 }
 
 void TigerLake::CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t lim, uint16_t access)
@@ -215,12 +228,7 @@ void TigerLake::CacheSegment(Segments seg, uint16_t sel, uint32_t base, uint32_t
 
 void TigerLake::CacheSegment(Segments seg, uint16_t sel)
 {
-    if (mode == Mode::RealMode)
-    {
-        segs[seg].selector = sel;
-        segs[seg].base = sel << 4;
-    }
-    else if (mode == Mode::ProtectedMode)
+    if ((cr[0] & 1) || mode == Mode::ProtectedMode)
     {
         uint16_t limitLow = l1->Read16(gdtr.base+sel, false);
         uint16_t baseLow = l1->Read16(gdtr.base+sel+2, false);
@@ -236,6 +244,11 @@ void TigerLake::CacheSegment(Segments seg, uint16_t sel)
         segs[seg].base = base;
         segs[seg].limit = limit;
         segs[seg].selector = sel;
+    }
+    else if (mode == Mode::RealMode)
+    {
+        segs[seg].selector = sel;
+        segs[seg].base = sel << 4;
     }
     else
     {
@@ -261,8 +274,6 @@ TigerLake::TigerLake()
     cr[0] = 0x60000010;
 
     MakeOpcodeTables();
-
-    canDisassemble = true;
 
     lapic = new LocalAPIC();
 }
@@ -305,17 +316,18 @@ void TigerLake::Reset()
     longJumpDone = false;
 
     lapic->Reset();
+
+    tsc = 0;
 }
 
 extern RAM* ram;
 
 void TigerLake::Clock()
 {
+    tsc++;
+
     if (halted)
         return;
-
-    if (canDisassemble)
-        printf("0x%08lx: ", TranslateAddr(CS, rip));
 
     uint8_t opcode = l1->Read8(TranslateAddr(CS, rip++), true);
 
@@ -340,12 +352,15 @@ void TigerLake::Clock()
     }
 
     fwait = false;
+    is_sse = false;
     
     bool isPrefix = true;
 
+    
+    printf("0x%08lx: ", TranslateAddr(CS, rip));
+
     while (isPrefix)
     {
-        printf("0x%02x ", opcode);
         switch (opcode)
         {
         case 0x0f:
@@ -564,6 +579,7 @@ void TigerLake::Clock()
                 table = &lookup16;
             else
                 table = &extLookup32;
+            is_sse = true;
             opcode = ReadImm8(true);
             break;
         case 0x67:
@@ -575,6 +591,10 @@ void TigerLake::Clock()
             else if (a32)
             {
                 a32 = false;
+            }
+            else
+            {
+                a32 = true;
             }
             opcode = ReadImm8(true);
             break;
@@ -592,8 +612,6 @@ void TigerLake::Clock()
             break;
         }
     }
-
-    printf("\t");
 
     if (!(*table)[opcode])
     {
@@ -620,6 +638,30 @@ void TigerLake::Clock()
     // Dump();
 }
 
+#define P10_UINT64 10000000000000000000ULL   /* 19 zeroes */
+#define E10_UINT64 19
+
+#define STRINGIZER(x)   # x
+#define TO_STRING(x)    STRINGIZER(x)
+
+static int print_u128_u(uint128_t u128)
+{
+    int rc;
+    if (u128 > UINT64_MAX)
+    {
+        uint128_t leading  = u128 / P10_UINT64;
+        uint64_t  trailing = u128 % P10_UINT64;
+        rc = print_u128_u(leading);
+        rc += printf("%." TO_STRING(E10_UINT64) PRIx64, trailing);
+    }
+    else
+    {
+        uint64_t u64 = u128;
+        rc = printf("%" PRIx64, u64);
+    }
+    return rc;
+}
+
 void TigerLake::Dump()
 {
     for (int i = 0; i < NUM_REGS; i++)
@@ -628,10 +670,19 @@ void TigerLake::Dump()
         printf("cr%d\t->\t0x%08x\n", i, cr[i]);
     printf("rip (phys)\t->\t0x%08lx\n", rip);
     printf("rip\t->\t0x%08lx\n", TranslateAddr(CS, rip));
-    printf("[%s%s%s%s%s]\n",
+    printf("[%s%s%s%s%s%s]\n",
         rflags.flag_bits.zf ? "z" : ".",
         rflags.flag_bits.sf ? "s" : ".",
         rflags.flag_bits.cf ? "c" : ".",
         rflags.flag_bits.pf ? "p" : ".",
-        rflags.flag_bits.of ? "o" : ".");
+        rflags.flag_bits.of ? "o" : ".",
+        rflags.flag_bits.id ? "i" : ".");
+    for (int i = 0; i < 16; i++)
+    {
+        printf("xmm%d\t->\t0x", i);
+        print_u128_u(sse1.xmm[i].reg128);
+        printf("\n");
+    }
+    for (int i = 0; i < 8; i++)
+        printf("mm%d\t->\t0x%08lx\n", i, mmx[i].reg64);
 }

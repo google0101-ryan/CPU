@@ -1,17 +1,16 @@
 #pragma once
 
 #include <IOBus.h>
+#include <fstream>
 #include <cassert>
 
-class CMOS : public IODevice
+class SerialPort : public IODevice
 {
 private:
-    uint8_t reset_reason = 0;
-    uint8_t selected_port = 0x00;
-
-    bool nmi_disabled = true;
+    std::ofstream log;
+    int base;
 public:
-    CMOS();
+    SerialPort(int com_number);
 
     virtual uint32_t In32(uint16_t port) {assert(0);}
     virtual uint16_t In16(uint16_t port) {assert(0);}

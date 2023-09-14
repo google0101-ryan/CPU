@@ -29,7 +29,10 @@ public:
 namespace Bus
 {
 
-void RegisterDevice(MemoryDevice* dev);
+size_t RegisterDevice(MemoryDevice* dev);
+void UnregisterDevice(size_t i);
+
+void Dump();
 
 uint8_t Read8(uint64_t addr);
 uint16_t Read16(uint64_t addr);
