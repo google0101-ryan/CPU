@@ -20,5 +20,8 @@ uint8_t SerialPort::In8(uint16_t port)
 void SerialPort::Out8(uint16_t port, uint8_t data)
 {
     if (port == base)
+    {
         log << (char)data;
+        log.flush();
+    }
 }

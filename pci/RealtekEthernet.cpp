@@ -2,6 +2,7 @@
 
 RealtekInternet::RealtekInternet(PCIBus *bus)
 {
+    name = "Realtek RTL8111 Ethernet";
     bus->RegisterDevice(0, 2, 0, this);
 }
 

@@ -2,6 +2,7 @@
 
 DramControllerTigerLake::DramControllerTigerLake(PCIBus *bus)
 {
+    name = "Tiger Lake DRAM controller";
     pciexbar = 0;
     pci = bus;
     bus->RegisterDevice(0x00, 0x00, 0x00, this);

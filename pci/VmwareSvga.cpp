@@ -2,6 +2,7 @@
 
 VmwareSvga::VmwareSvga(PCIBus *pci)
 {
+    name = "VMWare SVGA GPU";
     pci->RegisterDevice(0, 1, 0, this);
 }
 

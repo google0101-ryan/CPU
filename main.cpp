@@ -18,6 +18,8 @@
 #include <csignal>
 #include <cstring>
 
+#define TEST
+
 TigerLake* cores[8];
 RAM* ram;
 
@@ -44,6 +46,69 @@ enum Machine
     Q35 = 0,
     Tiger = 1,
 };
+
+#ifdef TEST
+
+class TestMemory : public MemoryDevice
+{
+public:
+private:
+    uint8_t* data;
+
+    uint64_t start, end;
+public:
+    TestMemory(uint8_t* data, size_t size, bool high = true)
+    : MemoryDevice("Test Memory (Used for unit tests)"),
+    data(data)
+    {
+        start = 0xFFFF0000;
+        end = start + size;
+
+        Bus::RegisterDevice(this);
+    }
+    
+    virtual uint64_t GetStart() const {return start;}
+    virtual uint64_t GetEnd() const {return end;}
+
+    virtual uint8_t  Read8(uint64_t addr) {return data[addr - start];}
+    virtual uint16_t Read16(uint64_t addr) {return *(uint16_t*)&data[addr - start];}
+    virtual uint32_t Read32(uint64_t addr) {return *(uint32_t*)&data[addr - start];}
+    virtual uint64_t Read64(uint64_t addr) {return *(uint64_t*)&data[addr - start];}
+
+    virtual void Write8(uint64_t addr, uint8_t data) {this->data[addr - start] = data;}
+    virtual void Write16(uint64_t addr, uint16_t data) {*(uint16_t*)(&this->data[addr - start]) = data;}
+    virtual void Write32(uint64_t addr, uint32_t data) {*(uint32_t*)(&this->data[addr - start]) = data;}
+    virtual void Write64(uint64_t addr, uint64_t data) {*(uint64_t*)(&this->data[addr - start]) = data;}
+};
+
+int main()
+{
+    TigerLake cpu;
+    cpu.Reset();
+    cpu.DoTestSetup();
+
+    uint8_t data[0xFFFF];
+    data[0] = 0xB8;
+    data[1] = 0xFE;
+    data[2] = 0x00;
+    data[3] = 0x00;
+    data[4] = 0x00;
+    data[5] = 0x83;
+    data[6] = 0xF8;
+    data[7] = 0xFF;
+
+    TestMemory test(data, 0xFFFF);
+
+    cpu.Clock();
+    cpu.Clock();
+
+    assert(cpu.GetReg(RAX) == 0xFE);
+    assert(cpu.GetFlags().flag_bits.cf == 1);
+    assert(cpu.GetFlags().flag_bits.zf == 0);
+    assert(cpu.GetFlags().flag_bits.sf == 1);
+}
+
+#else
 
 int main(int argc, char** argv)
 {
@@ -137,3 +202,5 @@ int main(int argc, char** argv)
 
     return 0;
 }
+
+#endif

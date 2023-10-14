@@ -2,6 +2,7 @@
 
 LPCBridge::LPCBridge(PCIBus *pci)
 {
+    name = "Q35 LPC Bridge";
     pci->RegisterDevice(0x00, 0x1F, 0x00, this);
 }
 

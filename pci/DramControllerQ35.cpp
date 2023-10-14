@@ -2,6 +2,8 @@
 
 DramController::DramController(PCIBus *bus)
 {
+    pam[0] = 0;
+    name = "Q35 DRAM controller";
     bus->RegisterDevice(0x00, 0x00, 0x00, this);
 }
 

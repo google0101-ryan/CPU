@@ -229,9 +229,9 @@ private:
     void JngRel8(); // 0x7E
     void JgRel8(); // 0x7F
     void Code80(); // 0x80
-        void OrRm8Imm8(); // 0x80 0x01
-        void AndRm8Imm8(); // 0x80 0x04
-        void CmpRm8Imm8(); // 0x80 0x07
+    void OrRm8Imm8(); // 0x80 0x01
+    void AndRm8Imm8(); // 0x80 0x04
+    void CmpRm8Imm8(); // 0x80 0x07
     void TestRm8R8(); // 0x84
     void MovRm8R8(); // 0x88
     void MovR8Rm8(); // 0x8A
@@ -244,15 +244,16 @@ private:
     void MovR8Imm8(); // 0xB0+r
     void MovRm8Imm8(); // 0xC6
     void CodeD0(); // 0xD0
-        void ShlRm81(); // 0xD0 0x04
+    void ShlRm81(); // 0xD0 0x04
     void InAlImm8(); // 0xE4
     void OutImm8Al(); // 0xE6
     void JmpRel8(); // 0xEB
     void InAlDx(); // 0xEC
+    void OutDxAl(); // 0xEE
     void CodeF6(); // 0xF6
-        void TestRm8Imm8(); // 0xF6 0x00-0x01
-        void DivAlRm8(); // 0xF6 0x06
-        void NegRm8(); // 0xF6 0x03
+    void TestRm8Imm8(); // 0xF6 0x00-0x01
+    void DivAlRm8(); // 0xF6 0x06
+    void NegRm8(); // 0xF6 0x03
     void Cld(); // 0xFC
     void Cli(); // 0xFA
     void CodeFE(); // 0xFE
@@ -267,8 +268,8 @@ private:
     void CmpAxImm16(); // 0x3D
     void IncR16(); // 0x40+r
     void Code81_16(); // 0x81
-        void AddRm16Imm16(); // 0x81 0x00
-        void CmpRm16Imm16(); // 0x81 0x07
+    void AddRm16Imm16(); // 0x81 0x00
+    void CmpRm16Imm16(); // 0x81 0x07
     void Code83_16(); // 0x81
     void CmpRm16Imm8(); // 0x83 0x07
     void TestRm16R16(); // 0x85
@@ -321,18 +322,18 @@ private:
     void Outsb(); // 0x6E
     void Pshufw(); // 0x70
     void Code81_32(); // 0x81
-        void AddRm32Imm32(); // 0x81 0x00
-        void OrRm32Imm32(); // 0x81 0x01
-        void AndRm32Imm32(); // 0x81 0x04
-        void SubRm32Imm32(); // 0x81 0x05
-        void XorRm32Imm32(); // 0x81 0x06
-        void CmpRm32Imm32(); // 0x81 0x07
+    void AddRm32Imm32(); // 0x81 0x00
+    void OrRm32Imm32(); // 0x81 0x01
+    void AndRm32Imm32(); // 0x81 0x04
+    void SubRm32Imm32(); // 0x81 0x05
+    void XorRm32Imm32(); // 0x81 0x06
+    void CmpRm32Imm32(); // 0x81 0x07
     void Code83_32(); // 0x83
-        void AddRm32Imm8(); // 0x83 0x00
-        void OrRm32Imm8(); // 0x83 0x01
-        void AndRm32Imm8(); // 0x83 0x04
-        void SubRm32Imm8(); // 0x83 0x05
-        void CmpRm32Imm8(); // 0x83 0x07
+    void AddRm32Imm8(); // 0x83 0x00
+    void OrRm32Imm8(); // 0x83 0x01
+    void AndRm32Imm8(); // 0x83 0x04
+    void SubRm32Imm8(); // 0x83 0x05
+    void CmpRm32Imm8(); // 0x83 0x07
     void TestRm32R32(); // 0x85
     void MovRm32R32(); // 0x89
     void MovR32Rm32(); // 0x8B
@@ -345,20 +346,20 @@ private:
     void Stosd(); // 0xAB
     void MovR32Imm32(); // 0xB8+r
     void CodeC1_32(); // 0xC1
-        void RolRm32Imm8(); // 0xC1 0x00
-        void RorRm32Imm8(); // 0xC1 0x01
-        void ShlRm32Imm8(); // 0xC1 0x04
-        void ShrRm32Imm8(); // 0xC1 0x05
-        void SarRm32Imm8(); // 0xC1 0x07
+    void RolRm32Imm8(); // 0xC1 0x00
+    void RorRm32Imm8(); // 0xC1 0x01
+    void ShlRm32Imm8(); // 0xC1 0x04
+    void ShrRm32Imm8(); // 0xC1 0x05
+    void SarRm32Imm8(); // 0xC1 0x07
     void Ret(); // 0xC3
     void MovRm32Imm32(); // 0xC7
     void Leave(); // 0xC9
     void CodeD1_32(); // 0xD1
-        void ShlRm321(); // 0xD1 0x04
-        void ShrRm321(); // 0xD1 0x05
+    void ShlRm321(); // 0xD1 0x04
+    void ShrRm321(); // 0xD1 0x05
     void CodeD3_32(); // 0xD3
-        void ShlRm32Cl(); // 0xD3 0x04
-        void ShrRm32Cl(); // 0xD3 0x05
+    void ShlRm32Cl(); // 0xD3 0x04
+    void ShrRm32Cl(); // 0xD3 0x05
     void CodeD9(); // 0xD9
     void Fldcw(); // 0xD9 0x05
     void CodeDB(); // 0xDB
@@ -369,21 +370,20 @@ private:
     void JmpRel32(); // 0xE9
     void JmpPtr1632(); // 0xEA
     void InEaxDx(); // 0xED
-    void OutDxAl(); // 0xEE
     void OutDxEax(); // 0xEF
     void CodeF7_32(); // 0xF7
-        void TestRm32Imm32(); // 0xF7 0x00-0x01
-        void NotRm32(); // 0xF7 0x02
-        void NegRm32(); // 0xF7 0x03
-        void MulEdxEaxRm32(); // 0xF7 0x04
-        void DivEdxEaxRm32(); // 0xF7 0x06
+    void TestRm32Imm32(); // 0xF7 0x00-0x01
+    void NotRm32(); // 0xF7 0x02
+    void NegRm32(); // 0xF7 0x03
+    void MulEdxEaxRm32(); // 0xF7 0x04
+    void DivEdxEaxRm32(); // 0xF7 0x06
     void CodeFF_32(); // 0xFF
-        void IncRm32(); // 0xFF 0x00
-        void DecRm32(); // 0xFF 0x01
-        void CallRm32(); // 0xFF 0x02
-        void JmpRm32(); // 0xFF 0x04
-        void JmpfRm32(); // 0xFF 0x05
-        void PushRm32(); // 0xFF 0x06
+    void IncRm32(); // 0xFF 0x00
+    void DecRm32(); // 0xFF 0x01
+    void CallRm32(); // 0xFF 0x02
+    void JmpRm32(); // 0xFF 0x04
+    void JmpfRm32(); // 0xFF 0x05
+    void PushRm32(); // 0xFF 0x06
 
     // 64-bit mode
     void AddRm64R64(); // 0x01
@@ -439,8 +439,8 @@ private:
 
     // All modes, 0x0f
     void Code0f01(); // 0x01
-        void Lgdt(); // 0x01 0x02
-        void Lidt(); // 0x01 0x03
+    void Lgdt(); // 0x01 0x02
+    void Lidt(); // 0x01 0x03
     void HintNop(); // 0x1E
     void MovR64CRn(); // 0x20
     void MovCRnR64(); // 0x22
@@ -449,7 +449,6 @@ private:
     void Rdmsr(); // 0x32
     void MovdMmRm32(); // 0x6E
     void MovdRm32Mm(); // 0x7E
-    void JnzRel32(); // 0x85
     void SetzRm8(); // 0x94
     void SetneRm8(); // 0x95
     void SetaRm8(); // 0x97
@@ -468,6 +467,7 @@ private:
     void JcRel32(); // 0x82
     void JncRel32(); // 0x83
     void JzRel32(); // 0x84
+    void JnzRel32(); // 0x85
     void JnaRel32(); // 0x86
     void JaRel32(); // 0x87
     void JsRel32(); // 0x88
@@ -479,11 +479,11 @@ private:
     void ImulR32Rm32(); // 0xAF
     void MovzxR32Rm8(); // 0xB6
     void MovzxR32Rm16(); // 0xB7
-    void MovsxR32Rm8(); // 0xB6
     void Code0FBA_32(); // 0xBA
     void BtRm32Imm8(); // 0xBA 0x05
     void BtsRm32Imm8(); // 0xBA 0x05
     void BsfR32Rm32(); // 0xBC
+    void MovsxR32Rm8(); // 0xBE
     void SetnlRm8(); // 0x9D
     void Pinsrw(); // 0xC4
     void BswapR32(); // 0xC8 + r
@@ -513,6 +513,11 @@ private:
 public:
     TigerLake();
     ~TigerLake();
+
+    uint64_t GetReg(int index) {return regs[index].reg64;}
+    RFLAGS GetFlags() {return rflags;}
+
+    void DoTestSetup();
 
     void Reset();
     void Clock();

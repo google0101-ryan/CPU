@@ -8,6 +8,8 @@
 class PCIDevice
 {
 public:
+    std::string name = "[UNINITIALIZED]";
+
     virtual void WriteConfigSpace8(uint16_t offs, uint32_t data) = 0;
     virtual void WriteConfigSpace16(uint16_t offs, uint32_t data) = 0;
     virtual void WriteConfigSpace32(uint16_t offs, uint32_t data) = 0;
@@ -29,7 +31,7 @@ private:
 public:
     PCIBus();
 
-    void RegisterDevice(int bus, int dev, int func, PCIDevice* device);
+    void RegisterDevice(int bus, int dev, int func, PCIDevice* device, bool log = true);
 
     uint64_t GetStart() const override {return pcie_base;}
     uint64_t GetEnd() const override {return pcie_base+(256*1024*1024);}

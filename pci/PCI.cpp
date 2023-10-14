@@ -6,7 +6,8 @@ class GenericPCIDevice : public PCIDevice
 public:
     GenericPCIDevice(int bus, int dev, int func, PCIBus* pci)
     {
-        pci->RegisterDevice(bus, dev, func, this);
+        name = "Generic (fake) placeholder PCI device";
+        pci->RegisterDevice(bus, dev, func, this, false);
     }
 
     void WriteConfigSpace8(uint16_t offs, uint32_t data) override {}
@@ -22,6 +23,7 @@ PCIBus::PCIBus()
 : IODevice("PCI/PCIe high-speed bus"), MemoryDevice("PCI Express config space")
 {
     pciAddr = 0;
+    pcie_base = 0;
 
     IOBus::RegisterDevice(this, 0xCF8, 0xCFF);
 
@@ -30,11 +32,12 @@ PCIBus::PCIBus()
         dev = new GenericPCIDevice(0, i, 0, this);
 }
 
-void PCIBus::RegisterDevice(int bus, int dev, int func, PCIDevice *device)
+void PCIBus::RegisterDevice(int bus, int dev, int func, PCIDevice *device, bool log)
 {
     uint32_t addr = (bus << 16) | (dev << 11) | (func << 8);
     devices[addr] = device;
-    printf("Registered device %d:%d.%d (0x%08x)\n", bus, dev, func, addr);
+    if (log)
+        printf("Registered device %s at %d:%d.%d (0x%08x)\n", device->name.c_str(), bus, dev, func, addr);
 }
 
 void PCIBus::MapPcie(uint64_t addr)

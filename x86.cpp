@@ -284,6 +284,20 @@ TigerLake::~TigerLake()
     delete l1;
 }
 
+void TigerLake::DoTestSetup()
+{
+    CacheSegment(CS, 0, 0xFFFF0000, 0xFFFF, 0x93);
+    CacheSegment(SS, 0, 0, 0xFFFF, 0x93);
+    CacheSegment(DS, 0, 0, 0xFFFF, 0x93);
+    CacheSegment(ES, 0, 0, 0xFFFF, 0x93);
+    CacheSegment(FS, 0, 0, 0xFFFF, 0x93);
+    CacheSegment(GS, 0, 0, 0xFFFF, 0x93);
+
+    mode = Mode::ProtectedMode;
+
+    rip = 0;
+}
+
 void TigerLake::Reset()
 {
     std::memset(regs, 0, sizeof(regs));
@@ -357,7 +371,7 @@ void TigerLake::Clock()
     bool isPrefix = true;
 
     
-    printf("0x%08lx: ", TranslateAddr(CS, rip));
+    printf("0x%08lx: ", TranslateAddr(CS, rip-1));
 
     while (isPrefix)
     {

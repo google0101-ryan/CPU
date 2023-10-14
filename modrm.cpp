@@ -183,6 +183,8 @@ uint64_t TigerLake::DecodeModrmAddr16(std::string &disasm)
         printf("Unknown 16-bit mod decoding %d\n", modrm.mod);
         exit(1);
     }
+
+    return 0;
 }
 
 uint64_t TigerLake::DecodeModrmAddr32(std::string &disasm)
@@ -474,6 +476,8 @@ uint64_t TigerLake::DecodeSIBAddr(std::string &disasm)
         disasm += a64 ? Reg64[sib.base] : Reg32[sib.base];
         return (a64 ? regs[sib.base].reg64 : regs[sib.base].reg32) + res;
     }
+
+    return 0;
 }
 
 uint64_t TigerLake::ReadModrmMMX(std::string &disasm)
